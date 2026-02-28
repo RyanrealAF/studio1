@@ -1,27 +1,32 @@
+
 "use client";
 
-import { useState } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-interface EQBand {
-  id: string;
-  label: string;
-  range: string;
-  value: number;
+interface EQSettings {
+  sub: number;
+  mud: number;
+  presence: number;
+  air: number;
 }
 
-export function EQPanel() {
-  const [bands, setBands] = useState<EQBand[]>([
-    { id: "sub", label: "Sub", range: "20–80 Hz", value: -3 },
-    { id: "mud", label: "Mud", range: "200–400 Hz", value: -4 },
-    { id: "presence", label: "Presence", range: "2–5 kHz", value: 3 },
-    { id: "air", label: "Air", range: "8–16 kHz", value: 1 },
-  ]);
+interface EQPanelProps {
+  value: EQSettings;
+  onChange: (settings: EQSettings) => void;
+}
 
-  const updateBand = (id: string, value: number[]) => {
-    setBands(prev => prev.map(b => b.id === id ? { ...b, value: value[0] } : b));
+export function EQPanel({ value, onChange }: EQPanelProps) {
+  const bands = [
+    { id: "sub", label: "Sub", range: "20–80 Hz" },
+    { id: "mud", label: "Mud", range: "200–400 Hz" },
+    { id: "presence", label: "Presence", range: "2–5 kHz" },
+    { id: "air", label: "Air", range: "8–16 kHz" },
+  ] as const;
+
+  const updateBand = (id: keyof EQSettings, newVal: number[]) => {
+    onChange({ ...value, [id]: newVal[0] });
   };
 
   return (
@@ -42,11 +47,11 @@ export function EQPanel() {
                   <p className="font-body text-[7px] text-white/20 uppercase">{band.range}</p>
                 </div>
                 <span className="font-headline text-lg text-accent tracking-tighter">
-                  {band.value >= 0 ? "+" : ""}{band.value}dB
+                  {value[band.id] >= 0 ? "+" : ""}{value[band.id]}dB
                 </span>
               </div>
               <Slider 
-                value={[band.value]} 
+                value={[value[band.id]]} 
                 min={-12} 
                 max={12} 
                 step={0.5} 
