@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@/firebase";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -112,8 +112,8 @@ export default function Dashboard() {
               </div>
             </CardContent>
             <div className="p-4 border-t border-white/5 bg-black/20 text-center">
-              <Button variant="ghost" className="text-[9px] tracking-[0.3em] uppercase text-muted-foreground hover:text-foreground">
-                VIEW ALL PROJECTS
+              <Button asChild variant="ghost" className="text-[9px] tracking-[0.3em] uppercase text-muted-foreground hover:text-foreground">
+                <Link href="/history">VIEW ALL PROJECTS</Link>
               </Button>
             </div>
           </Card>
@@ -126,26 +126,32 @@ export default function Dashboard() {
               <CardTitle className="font-headline text-lg tracking-widest uppercase">Quick Entry</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-3">
-              <Button variant="outline" className="justify-start h-14 border-white/5 bg-white/[0.01] hover:bg-white/[0.05] group">
-                <Scissors className="mr-4 w-4 h-4 text-primary group-hover:scale-110 transition-transform" />
-                <div className="text-left">
-                  <p className="text-[10px] font-bold uppercase tracking-widest">Operating Room</p>
-                  <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Start new vocal session</p>
-                </div>
+              <Button asChild variant="outline" className="justify-start h-14 border-white/5 bg-white/[0.01] hover:bg-white/[0.05] group">
+                <Link href="/surgery">
+                  <Scissors className="mr-4 w-4 h-4 text-primary group-hover:scale-110 transition-transform" />
+                  <div className="text-left">
+                    <p className="text-[10px] font-bold uppercase tracking-widest">Operating Room</p>
+                    <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Start new vocal session</p>
+                  </div>
+                </Link>
               </Button>
-              <Button variant="outline" className="justify-start h-14 border-white/5 bg-white/[0.01] hover:bg-white/[0.05] group">
-                <FileText className="mr-4 w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
-                <div className="text-left">
-                  <p className="text-[10px] font-bold uppercase tracking-widest">Ground Truth</p>
-                  <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Manage lyric assets</p>
-                </div>
+              <Button asChild variant="outline" className="justify-start h-14 border-white/5 bg-white/[0.01] hover:bg-white/[0.05] group">
+                <Link href="/identity">
+                  <FileText className="mr-4 w-4 h-4 text-accent group-hover:scale-110 transition-transform" />
+                  <div className="text-left">
+                    <p className="text-[10px] font-bold uppercase tracking-widest">Ground Truth</p>
+                    <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Manage lyric assets</p>
+                  </div>
+                </Link>
               </Button>
-              <Button variant="outline" className="justify-start h-14 border-white/5 bg-white/[0.01] hover:bg-white/[0.05] group">
-                <History className="mr-4 w-4 h-4 text-muted-foreground group-hover:scale-110 transition-transform" />
-                <div className="text-left">
-                  <p className="text-[10px] font-bold uppercase tracking-widest">Archives</p>
-                  <p className="text-[8px] text-muted-foreground uppercase tracking-wider">View session history</p>
-                </div>
+              <Button asChild variant="outline" className="justify-start h-14 border-white/5 bg-white/[0.01] hover:bg-white/[0.05] group">
+                <Link href="/history">
+                  <History className="mr-4 w-4 h-4 text-muted-foreground group-hover:scale-110 transition-transform" />
+                  <div className="text-left">
+                    <p className="text-[10px] font-bold uppercase tracking-widest">Archives</p>
+                    <p className="text-[8px] text-muted-foreground uppercase tracking-wider">View session history</p>
+                  </div>
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -166,5 +172,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-import { cn } from "@/lib/utils";
