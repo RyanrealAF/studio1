@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -14,6 +13,7 @@ import { forcedAlignment, type ForcedAlignmentOutput } from "@/ai/flows/forced-a
 import { scoreSpectralConfidence, type SpectralConfidenceScoringOutput } from "@/ai/flows/spectral-confidence-scoring";
 import { contextualEqProfileGeneration, type ContextualEqProfileGenerationOutput } from "@/ai/flows/contextual-eq-profile-generation";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export default function SurgeryRoom() {
   const { toast } = useToast();
