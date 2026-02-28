@@ -75,21 +75,20 @@ const spectralConfidencePrompt = ai.definePrompt({
   input: { schema: SpectralConfidenceScoringInputSchema },
   output: { schema: SpectralConfidenceScoringOutputSchema },
   // Using a multimodal model like Gemini 1.5 Flash/Pro is crucial for audio analysis.
-  // The global ai object is configured with 'googleai/gemini-2.5-flash', which supports audio.
-  model: 'googleai/gemini-1.5-flash', // Explicitly using 1.5-flash for its strong multimodal capabilities with audio
+  model: 'googleai/gemini-1.5-flash',
   prompt: `You are an expert audio engineer and vocal producer. Your task is to analyze a vocal audio track against its provided lyrics and word-level timestamps.
 For each word, evaluate its clarity, articulation, and overall presence in the audio. Assign a confidence score from 0 (very unclear, needs significant repair) to 100 (perfectly clear, no repair needed).
 Based on this confidence score, determine if the word 'needs repair'. A word needs repair if its clarity, articulation, or presence is significantly compromised. Typically, a score below 60 might indicate a need for repair.
 
 Here are the full lyrics:
-```
+\`\`\`
 {{{lyrics}}}
-```
+\`\`\`
 
 Here are the word-level timestamps for your analysis:
-```json
+\`\`\`json
 {{{json wordTimestamps}}}
-```
+\`\`\`
 
 Analyze the audio provided. Focus your analysis on the specific audio segments for each word as indicated by the 'startTime' and 'endTime' in the wordTimestamps.
 
