@@ -1,44 +1,58 @@
 # VOCAL SURGEON
 
-A lyrics-anchored, word-level vocal stem clarity engine built with Next.js, Firebase, and Genkit.
+A high-precision, lyrics-anchored vocal stem clarity engine built with Next.js, Firebase, and Genkit.
 
-## Getting Started
+## GitHub Deployment Instructions
 
-1.  **Operator Login**: Sign in with your Google account via the sidebar.
-2.  **New Incision**: Navigate to the **Surgery Room** to start a new project.
-3.  **Setup**: Provide the ground truth lyrics and upload your dry vocal stem (WAV/FLAC).
-4.  **Analysis**: Run the spectral mapping engine to identify "ghosted" words.
-5.  **Surgery**: Inspect word-level clarity scores and apply surgical fixes or EQ profiles.
+To push this project to your GitHub repository, run these commands in your terminal:
 
-## Deployment to GitHub
+1. **Initialize Git**:
+   ```bash
+   git init
+   ```
 
-To deploy this project to GitHub:
+2. **Add Files**:
+   ```bash
+   git add .
+   ```
 
-1.  **Initialize Git**: `git init`
-2.  **Add Files**: `git add .`
-3.  **Commit**: `git commit -m "Initial commit: Vocal Surgeon Clinical Console"`
-4.  **Create Repository**: Create a new repository on GitHub.
-5.  **Push**:
-    ```bash
-    git remote add origin <your-repo-url>
-    git branch -M main
-    git push -u origin main
-    ```
+3. **Commit Changes**:
+   ```bash
+   git commit -m "Initial commit: Vocal Surgeon Clinical Console"
+   ```
 
-## Firebase App Hosting
+4. **Create a Repository on GitHub**:
+   Go to [github.com/new](https://github.com/new) and create a repository named `vocal-surgeon`.
 
-This app is optimized for **Firebase App Hosting**. Once your repository is pushed to GitHub:
+5. **Link and Push**:
+   ```bash
+   git remote add origin https://github.com/YOUR_USERNAME/vocal-surgeon.git
+   git branch -M main
+   git push -u origin main
+   ```
 
-1.  Go to the [Firebase Console](https://console.firebase.google.com/).
-2.  Select **App Hosting** from the sidebar.
-3.  Click **Get Started** and link your GitHub repository.
-4.  Follow the configuration steps (Next.js is detected automatically).
-5.  Deployments will trigger automatically on every push to your main branch.
+## Firebase App Hosting (CI/CD)
+
+This application is optimized for **Firebase App Hosting**. Once your code is on GitHub:
+
+1. Go to the [Firebase Console](https://console.firebase.google.com/).
+2. Select **App Hosting** from the sidebar.
+3. Click **Get Started** and link the GitHub repository you just created.
+4. Follow the setup wizard (it will detect Next.js automatically).
+5. Every time you `git push`, Firebase will automatically build and deploy your surgical theater.
+
+## Core Features
+
+- **Operating Room**: Input ground truth lyrics and upload dry vocal stems for spectral analysis.
+- **Forced Alignment**: Precise word-level synchronization using Gemini-powered Genkit flows.
+- **Spectral Scoring**: Automated clarity assessment to identify "ghosted" words.
+- **Surgical EQ**: Dedicated 4-band control tuned for clinical audio precision.
+- **Project Archives**: Persistent storage of projects and analysis history via Firestore.
 
 ## Tech Stack
 
-- **Next.js 15 (App Router)**: Functional Clinical UI.
-- **Firebase Auth**: Google Operator Sign-in.
-- **Firestore**: Real-time project and token persistence.
-- **Genkit AI**: Forced alignment and spectral confidence scoring.
-- **ShadCN UI + Tailwind**: Cinematic "Ink/Bone/Blood" professional aesthetic.
+- **Framework**: Next.js 15 (App Router)
+- **Database**: Firestore (Hierarchical user-ownership model)
+- **Auth**: Firebase Google Operator Sign-in
+- **AI**: Genkit with Google Gemini 1.5 Flash
+- **Styling**: Tailwind CSS + ShadCN UI (Ink/Bone/Blood aesthetic)
