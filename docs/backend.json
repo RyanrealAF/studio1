@@ -1,0 +1,592 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Vocal Surgeon application, authenticated via Google.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "googleId": {
+          "type": "string",
+          "description": "The unique identifier provided by Google for the user's Google account."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's primary email address, typically obtained from their Google account.",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name, typically obtained from their Google account."
+        },
+        "profilePictureUrl": {
+          "type": "string",
+          "description": "A URL to the user's profile picture, typically from their Google account.",
+          "format": "uri"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "googleId",
+        "email",
+        "displayName",
+        "createdAt"
+      ]
+    },
+    "Project": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Project",
+      "type": "object",
+      "description": "Represents a user's creative project, serving as the main container for lyrics, audio, and processing results.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Project entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns this project. (Relationship: User 1:N Project)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The title of the project."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional brief description or notes for the project."
+        },
+        "productionContext": {
+          "type": "string",
+          "description": "User-defined production context (e.g., 'grimy boom-bap', 'ambient lo-fi') that influences AI processing suggestions."
+        },
+        "desiredSonicQualities": {
+          "type": "array",
+          "description": "A list of desired sonic qualities for the vocal, influencing AI processing (e.g., ['present', 'gritty', 'clean']).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the project was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the project was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "createdAt"
+      ]
+    },
+    "Lyrics": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Lyrics",
+      "type": "object",
+      "description": "Stores the textual lyrics content associated with a project.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Lyrics entity."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Reference to the Project these lyrics belong to. (Relationship: Project 1:N Lyrics)"
+        },
+        "text": {
+          "type": "string",
+          "description": "The full lyrical content as provided by the user."
+        },
+        "language": {
+          "type": "string",
+          "description": "The detected or specified language of the lyrics (e.g., 'en-US', 'es-ES')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the lyrics were added to the project.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the lyrics were last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "text",
+        "createdAt"
+      ]
+    },
+    "AudioFile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AudioFile",
+      "type": "object",
+      "description": "Stores metadata about an uploaded vocal audio file.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AudioFile entity."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Reference to the Project this audio file belongs to. (Relationship: Project 1:N AudioFile)"
+        },
+        "fileName": {
+          "type": "string",
+          "description": "The original file name of the uploaded audio."
+        },
+        "storageUrl": {
+          "type": "string",
+          "description": "The URL where the actual audio file content is stored in a file storage system.",
+          "format": "uri"
+        },
+        "durationSeconds": {
+          "type": "number",
+          "description": "The duration of the audio file in seconds."
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "The MIME type of the audio file (e.g., 'audio/wav', 'audio/mpeg')."
+        },
+        "uploadedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the audio file was uploaded.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "fileName",
+        "storageUrl",
+        "durationSeconds",
+        "mimeType",
+        "uploadedAt"
+      ]
+    },
+    "ForcedAlignmentResult": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ForcedAlignmentResult",
+      "type": "object",
+      "description": "Stores the results of aligning lyrics to an audio file, including word-level timestamps and initial confidence scores.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ForcedAlignmentResult entity."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Reference to the Project for which this alignment was performed. (Relationship: Project 1:N ForcedAlignmentResult)"
+        },
+        "audioFileId": {
+          "type": "string",
+          "description": "Reference to the AudioFile that was aligned. (Relationship: AudioFile 1:N ForcedAlignmentResult)"
+        },
+        "lyricsId": {
+          "type": "string",
+          "description": "Reference to the Lyrics that were used for alignment. (Relationship: Lyrics 1:N ForcedAlignmentResult)"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the alignment process (e.g., 'pending', 'processing', 'completed', 'failed')."
+        },
+        "words": {
+          "type": "array",
+          "description": "An array of word objects, each containing details about an aligned word including its timing, confidence, and repair flag.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "processedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the alignment process was completed.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "audioFileId",
+        "lyricsId",
+        "status",
+        "words",
+        "processedAt"
+      ]
+    },
+    "EQProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EQProfile",
+      "type": "object",
+      "description": "Defines an equalization and audio processing profile, which can be AI-suggested or user-defined.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the EQProfile entity."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Reference to the Project this EQ profile is associated with. (Relationship: Project 1:N EQProfile)"
+        },
+        "name": {
+          "type": "string",
+          "description": "A descriptive name for the EQ profile (e.g., 'Crisp Vocals', 'Boom-Bap Grit')."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the sonic characteristics and intended use of the profile."
+        },
+        "parameters": {
+          "type": "array",
+          "description": "An array of objects, each describing an audio processing parameter (e.g., EQ bands, compressor settings).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isSuggestedByAI": {
+          "type": "boolean",
+          "description": "Indicates if this profile was generated by the AI based on production context."
+        },
+        "isUserCustom": {
+          "type": "boolean",
+          "description": "Indicates if this profile was created or significantly modified by the user."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the EQ profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the EQ profile was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "name",
+        "parameters",
+        "createdAt"
+      ]
+    },
+    "RepairAdjustment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RepairAdjustment",
+      "type": "object",
+      "description": "Represents a specific manual or AI-suggested vocal repair applied to a segment of audio within a project.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the RepairAdjustment entity."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Reference to the Project this repair applies to. (Relationship: Project 1:N RepairAdjustment)"
+        },
+        "forcedAlignmentResultId": {
+          "type": "string",
+          "description": "Reference to the specific ForcedAlignmentResult this adjustment targets. (Relationship: ForcedAlignmentResult 1:N RepairAdjustment)"
+        },
+        "startOffset": {
+          "type": "number",
+          "description": "The start time in seconds from the beginning of the audio where the repair adjustment begins."
+        },
+        "endOffset": {
+          "type": "number",
+          "description": "The end time in seconds from the beginning of the audio where the repair adjustment ends."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of vocal repair being applied (e.g., 'de-esser', 'pitch_correction', 'volume_automation', 'noise_reduction')."
+        },
+        "parameters": {
+          "type": "string",
+          "description": "A JSON object containing specific settings and values for the repair type (e.g., threshold for de-esser, pitch target for correction)."
+        },
+        "appliedByUserId": {
+          "type": "string",
+          "description": "Reference to the User who made or confirmed this adjustment. (Relationship: User 1:N RepairAdjustment)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the repair adjustment was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the repair adjustment was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "forcedAlignmentResultId",
+        "startOffset",
+        "endOffset",
+        "type",
+        "parameters",
+        "appliedByUserId",
+        "createdAt"
+      ]
+    },
+    "ExportedAudio": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ExportedAudio",
+      "type": "object",
+      "description": "Records details about an audio file exported from a project, including applied settings.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ExportedAudio entity."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Reference to the Project the audio was exported from. (Relationship: Project 1:N ExportedAudio)"
+        },
+        "fileName": {
+          "type": "string",
+          "description": "The name of the exported audio file."
+        },
+        "storageUrl": {
+          "type": "string",
+          "description": "The URL where the exported audio file is stored in a file storage system.",
+          "format": "uri"
+        },
+        "format": {
+          "type": "string",
+          "description": "The audio file format of the export (e.g., 'WAV', 'MP3', 'FLAC')."
+        },
+        "exportSettings": {
+          "type": "string",
+          "description": "A JSON object detailing the specific settings and configurations used for this export, including applied EQ profiles and repair adjustments."
+        },
+        "exportedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the audio was exported.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "fileName",
+        "storageUrl",
+        "format",
+        "exportedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information. The document ID (`userId`) will be the Firebase Authentication UID, allowing for direct mapping and simple authorization rules. Includes fields like Google ID, email, and display name.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user, corresponding to Firebase Authentication's UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/projects/{projectId}",
+        "definition": {
+          "entityName": "Project",
+          "schema": {
+            "$ref": "#/backend/entities/Project"
+          },
+          "description": "Contains metadata for each creative project. Each project is owned by a specific user. The `userId` field in the document explicitly denotes ownership and is denormalized from the parent path for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who owns this project."
+            },
+            {
+              "name": "projectId",
+              "description": "The unique ID for the project."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/projects/{projectId}/lyrics/{lyricsId}",
+        "definition": {
+          "entityName": "Lyrics",
+          "schema": {
+            "$ref": "#/backend/entities/Lyrics"
+          },
+          "description": "Stores the textual lyrics content for a project. Includes denormalized `userId` and `projectId` fields to ensure authorization independence without requiring parent document reads for security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who owns the parent project."
+            },
+            {
+              "name": "projectId",
+              "description": "The unique ID of the parent project."
+            },
+            {
+              "name": "lyricsId",
+              "description": "The unique ID for the lyrics document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/projects/{projectId}/audioFiles/{audioFileId}",
+        "definition": {
+          "entityName": "AudioFile",
+          "schema": {
+            "$ref": "#/backend/entities/AudioFile"
+          },
+          "description": "Stores metadata about uploaded vocal audio files associated with a project. Includes denormalized `userId` and `projectId` fields for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who owns the parent project."
+            },
+            {
+              "name": "projectId",
+              "description": "The unique ID of the parent project."
+            },
+            {
+              "name": "audioFileId",
+              "description": "The unique ID for the audio file document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/projects/{projectId}/forcedAlignmentResults/{alignmentId}",
+        "definition": {
+          "entityName": "ForcedAlignmentResult",
+          "schema": {
+            "$ref": "#/backend/entities/ForcedAlignmentResult"
+          },
+          "description": "Records the results of forced alignment, linking lyrics and audio. Includes denormalized `userId` and `projectId` fields for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who owns the parent project."
+            },
+            {
+              "name": "projectId",
+              "description": "The unique ID of the parent project."
+            },
+            {
+              "name": "alignmentId",
+              "description": "The unique ID for the forced alignment result document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/projects/{projectId}/eqProfiles/{eqProfileId}",
+        "definition": {
+          "entityName": "EQProfile",
+          "schema": {
+            "$ref": "#/backend/entities/EQProfile"
+          },
+          "description": "Defines equalization and audio processing profiles for a project. Includes denormalized `userId` and `projectId` fields for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who owns the parent project."
+            },
+            {
+              "name": "projectId",
+              "description": "The unique ID of the parent project."
+            },
+            {
+              "name": "eqProfileId",
+              "description": "The unique ID for the EQ profile document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/projects/{projectId}/repairAdjustments/{repairAdjustmentId}",
+        "definition": {
+          "entityName": "RepairAdjustment",
+          "schema": {
+            "$ref": "#/backend/entities/RepairAdjustment"
+          },
+          "description": "Represents specific vocal repair adjustments applied within a project. Includes denormalized `userId` and `projectId` fields for authorization independence, alongside `appliedByUserId` for auditability.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who owns the parent project."
+            },
+            {
+              "name": "projectId",
+              "description": "The unique ID of the parent project."
+            },
+            {
+              "name": "repairAdjustmentId",
+              "description": "The unique ID for the repair adjustment document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/projects/{projectId}/exportedAudio/{exportId}",
+        "definition": {
+          "entityName": "ExportedAudio",
+          "schema": {
+            "$ref": "#/backend/entities/ExportedAudio"
+          },
+          "description": "Records details about exported audio files from a project. Includes denormalized `userId` and `projectId` fields for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user who owns the parent project."
+            },
+            {
+              "name": "projectId",
+              "description": "The unique ID of the parent project."
+            },
+            {
+              "name": "exportId",
+              "description": "The unique ID for the exported audio document."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to be highly secure, scalable, and debuggable, adhering strictly to the core design principles and strategy mandates. The central theme is **path-based ownership** combined with **authorization independence through strategic denormalization**.\n\n**Authorization Independence (CRITICAL):** This structure explicitly avoids hierarchical authorization dependencies by denormalizing key authorization context into every relevant document. For instance, `Project` documents store `userId`, and critically, all subcollection documents (`Lyrics`, `AudioFile`, `ForcedAlignmentResult`, `EQProfile`, `RepairAdjustment`, `ExportedAudio`) will denormalize both `userId` and `projectId` directly into their documents. This means security rules can evaluate access for any document (even in deep subcollections) by simply inspecting `resource.data.userId` and `request.auth.uid`, or `resource.data.projectId` against the `{projectId}` wildcard in the path, without needing a costly and dependency-creating `get()` operation to a parent document. This greatly simplifies rule logic, enhances atomicity for batch writes and transactions (as rule evaluation doesn't require reading unrelated documents), and improves debuggability.\n\n**Querying for Authorized Paths (QAPs - Rules are not Filters):** The hierarchical structure directly facilitates secure `list` operations. \n1.  **User-specific Projects:** The collection `/users/{userId}/projects` ensures that a user can only query (list) projects where the `{userId}` in the path matches their authenticated `request.auth.uid`. The security rule can simply be `allow list: if request.auth.uid == userId;`.\n2.  **Project-specific Subcollections:** For subcollections like `/users/{userId}/projects/{projectId}/lyrics`, a user can only `list` documents within projects that they own (as `request.auth.uid` must match the `{userId}` in the path). Furthermore, since `projectId` is also denormalized into these subcollection documents, a rule can verify `resource.data.projectId == projectId` for robustness. This guarantees that `list` queries are inherently constrained to the authorized scope, preventing data leakage and enabling efficient, secure data retrieval without needing complex filtering on the client side or insecure `list` rules.\n\n**Structural Segregation:** All documents within a given collection path (`/users/{userId}/projects/{projectId}/lyrics` for example) share the same security posture: they belong to the specified user and project. There is no mixing of public/private or different permission levels within a single collection, making security rules straightforward and explicit.\n\n**Access Modeling:** The design leverages path-based ownership for private user data (`/users/{userId}` as the root for all user-owned data), and continues this hierarchy for nested 1:N relationships (`/users/{userId}/projects/{projectId}/lyrics/{lyricsId}`). This is a robust and easily auditable model for user-owned content."
+  }
+}

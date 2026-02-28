@@ -1,0 +1,151 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * VOCAL SURGEON SECURITY RULES
+     * 
+     * CORE PHILOSOPHY:
+     * This ruleset enforces a strict user-ownership model using a hierarchical path-based structure. 
+     * Every document is nested under a specific user's root (/users/{userId}), ensuring that 
+     * authorization is naturally tied to the authenticated user's identity.
+     * 
+     * DATA STRUCTURE:
+     * All application data follows the pattern: /users/{userId}/projects/{projectId}/{subcollection}/{docId}.
+     * This hierarchy ensures that data is logically isolated per user and per project.
+     * 
+     * KEY SECURITY DECISIONS:
+     * 1. Path-Based Authorization: Access is primarily determined by whether the {userId} 
+     *    in the document path matches the request.auth.uid.
+     * 2. Denormalization for Performance: Critical IDs (userId, projectId) are denormalized 
+     *    into documents. While rules use path wildcards for speed, we validate that 
+     *    internal data matches the path during creation to ensure data integrity.
+     * 3. Prototyping Flexibility: Rules do not enforce strict schemas or data types for 
+     *    content fields, allowing for rapid front-end iteration while maintaining 
+     *    watertight access control.
+     * 4. Private by Default: User listing is disabled. Users can only access their 
+     *    own profile and nested projects.
+     */
+
+    // --- Helper Functions ---
+
+    /** Checks if the request is from an authenticated user. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** Checks if the authenticated user's UID matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** Checks ownership and ensures the document exists for state-changing operations. */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /** Validates that an internal field is immutable during an update. */
+    function isUnchanged(key) {
+      return request.resource.data[key] == resource.data[key];
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the User profile document. Users can only manage their own profile.
+     * @path /users/{userId}
+     * @allow get: (isSignedIn) && (isOwner(userId))
+     * @deny list: (always) - User listing is prohibited for privacy.
+     * @principle Ownership - Restricts access to a user's own identity record.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Rules for Projects. Owned by the user specified in the parent path.
+       * @path /users/{userId}/projects/{projectId}
+       * @allow create: if isOwner(userId) && request.resource.data.userId == userId
+       * @deny create: if userId != request.auth.uid
+       * @principle Relational Integrity - Enforces that the document's userId matches the path.
+       */
+      match /projects/{projectId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && isUnchanged('userId');
+        allow delete: if isExistingOwner(userId);
+
+        /**
+         * @description Rules for Lyrics. Nested under specific projects.
+         * @path /users/{userId}/projects/{projectId}/lyrics/{lyricsId}
+         * @allow list: if isOwner(userId)
+         * @principle Path-based ownership - Subcollections inherit the owner's access.
+         */
+        match /lyrics/{lyricsId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.projectId == projectId;
+          allow update: if isExistingOwner(userId) && isUnchanged('projectId');
+          allow delete: if isExistingOwner(userId);
+        }
+
+        /**
+         * @description Rules for Audio Files. Metadata for vocal tracks.
+         * @path /users/{userId}/projects/{projectId}/audioFiles/{audioFileId}
+         */
+        match /audioFiles/{audioFileId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.projectId == projectId;
+          allow update: if isExistingOwner(userId) && isUnchanged('projectId');
+          allow delete: if isExistingOwner(userId);
+        }
+
+        /**
+         * @description Rules for Forced Alignment Results. Processing data linking audio and text.
+         * @path /users/{userId}/projects/{projectId}/forcedAlignmentResults/{alignmentId}
+         */
+        match /forcedAlignmentResults/{alignmentId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.projectId == projectId;
+          allow update: if isExistingOwner(userId) && isUnchanged('projectId');
+          allow delete: if isExistingOwner(userId);
+        }
+
+        /**
+         * @description Rules for EQ Profiles. Audio processing configurations.
+         * @path /users/{userId}/projects/{projectId}/eqProfiles/{eqProfileId}
+         */
+        match /eqProfiles/{eqProfileId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.projectId == projectId;
+          allow update: if isExistingOwner(userId) && isUnchanged('projectId');
+          allow delete: if isExistingOwner(userId);
+        }
+
+        /**
+         * @description Rules for Repair Adjustments. Specific manual or AI edits.
+         * @path /users/{userId}/projects/{projectId}/repairAdjustments/{repairAdjustmentId}
+         */
+        match /repairAdjustments/{repairAdjustmentId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.projectId == projectId;
+          allow update: if isExistingOwner(userId) && isUnchanged('projectId');
+          allow delete: if isExistingOwner(userId);
+        }
+
+        /**
+         * @description Rules for Exported Audio. Records of finished processing runs.
+         * @path /users/{userId}/projects/{projectId}/exportedAudio/{exportId}
+         */
+        match /exportedAudio/{exportId} {
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.projectId == projectId;
+          allow update: if isExistingOwner(userId) && isUnchanged('projectId');
+          allow delete: if isExistingOwner(userId);
+        }
+      }
+    }
+  }
+}
