@@ -78,6 +78,7 @@ export default {
           '0%, 94%, 100%': { opacity: '1' },
           '95%': { opacity: '0.6' },
           '97%': { opacity: '0.85' },
+          '98%': { opacity: '0.6' },
         }
       },
       animation: {

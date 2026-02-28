@@ -1,23 +1,28 @@
-
 {
   "placeholderImages": [
     {
       "id": "vocal-wave",
-      "description": "Abstract audio waveform",
+      "description": "Abstract high-precision audio waveform display",
       "imageUrl": "https://picsum.photos/seed/vocal1/1200/800",
       "imageHint": "audio waveform"
     },
     {
       "id": "studio-gear",
-      "description": "Professional recording studio equipment",
+      "description": "Close-up of vintage analog studio mixing console",
       "imageUrl": "https://picsum.photos/seed/studio2/800/600",
-      "imageHint": "recording studio"
+      "imageHint": "mixing console"
     },
     {
       "id": "surgical-precision",
-      "description": "Detailed technical measurement instruments",
+      "description": "Macro shot of mechanical instrument precision gauge",
       "imageUrl": "https://picsum.photos/seed/tech3/800/600",
-      "imageHint": "technical precision"
+      "imageHint": "mechanical precision"
+    },
+    {
+      "id": "ink-grain",
+      "description": "Dark textured paper with ink splatter aesthetic",
+      "imageUrl": "https://picsum.photos/seed/ink4/1920/1080",
+      "imageHint": "dark texture"
     }
   ]
 }
