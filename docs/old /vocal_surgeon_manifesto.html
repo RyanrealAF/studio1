@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOCAL SURGEON — Build Manifesto</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#05050a;--bone:#ece6d0;--blood:#b8281e;--rust:#6e2518;
+  --gold:#c4994a;--green:#22a159;--blue:#2471a3;--purple:#8e44ad;
+  --smoke:#0c0c11;--mid:#181820;--dim:#4e4e58;--muted:#948b78;
+  --paper:#0a0a0f;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--ink);color:var(--bone);
+  font-family:'Space Mono',monospace;font-size:13px;line-height:1.85;
+  overflow-x:hidden;
+}
+
+/* GRAIN */
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:9998;
+}
+
+/* SIDE NAV */
+.sidenav{
+  position:fixed;left:0;top:0;bottom:0;width:210px;
+  background:rgba(5,5,10,.97);border-right:1px solid #111118;
+  overflow-y:auto;z-index:200;padding:0;
+  backdrop-filter:blur(8px);
+}
+.sidenav-brand{
+  padding:1.8rem 1.4rem 1.4rem;
+  border-bottom:1px solid #111118;
+  position:relative;overflow:hidden;
+}
+.sidenav-brand::before{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,var(--blood),transparent);
+}
+.brand-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:1.35rem;letter-spacing:.12em;color:var(--bone);
+}
+.brand-title em{color:var(--blood);font-style:normal}
+.brand-sub{
+  font-size:.42rem;letter-spacing:.35em;text-transform:uppercase;
+  color:var(--dim);margin-top:.3rem;
+}
+.nav-group{padding:.8rem 0 .2rem 1.4rem;font-size:.38rem;letter-spacing:.4em;text-transform:uppercase;color:#222228}
+.nav-link{
+  display:flex;align-items:center;gap:.6rem;
+  padding:.5rem 1.4rem;font-size:.48rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--dim);text-decoration:none;transition:all .25s;
+  border-left:2px solid transparent;position:relative;
+}
+.nav-link:hover{color:var(--muted);border-left-color:var(--rust)}
+.nav-link.active{color:var(--blood);border-left-color:var(--blood)}
+.nav-link .nav-num{
+  font-family:'Bebas Neue',sans-serif;font-size:.7rem;
+  color:inherit;opacity:.5;width:16px;flex-shrink:0;
+}
+
+/* MAIN */
+.main{margin-left:210px}
+
+/* HERO — full viewport */
+.hero{
+  min-height:100vh;display:flex;flex-direction:column;
+  justify-content:flex-end;padding:0 3rem 4rem;
+  position:relative;overflow:hidden;
+  border-bottom:1px solid #111118;
+}
+.hero-bg{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(184,40,30,.06) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 20% 80%, rgba(110,37,24,.08) 0%, transparent 50%),
+    linear-gradient(180deg,transparent 0%,rgba(5,5,10,.8) 100%);
+  pointer-events:none;
+}
+.hero-rule{
+  position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--blood),var(--rust),transparent);
+}
+.hero-watermark{
+  position:absolute;right:-2rem;top:50%;transform:translateY(-50%);
+  font-family:'Bebas Neue',sans-serif;font-size:clamp(12rem,30vw,26rem);
+  line-height:.85;color:rgba(184,40,30,.04);letter-spacing:.04em;
+  pointer-events:none;user-select:none;white-space:nowrap;
+}
+.hero-tag{
+  font-size:.45rem;letter-spacing:.5em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:1.5rem;
+  display:flex;align-items:center;gap:1rem;
+}
+.hero-tag::before{content:'';width:24px;height:1px;background:var(--gold)}
+.hero-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(5rem,14vw,11rem);
+  line-height:.88;letter-spacing:.04em;color:var(--bone);
+}
+.hero-title .red{color:var(--blood)}
+.hero-sub{
+  font-family:'Playfair Display',serif;font-style:italic;
+  font-size:1.15rem;color:var(--muted);
+  max-width:48ch;line-height:1.7;margin-top:1.5rem;
+}
+.hero-meta{
+  display:flex;gap:.5rem;flex-wrap:wrap;margin-top:2rem;
+}
+.hchip{
+  font-size:.4rem;letter-spacing:.25em;text-transform:uppercase;
+  padding:.28rem .6rem;border:1px solid;border-radius:2px;
+}
+.hc-r{color:var(--blood);border-color:rgba(184,40,30,.3)}
+.hc-g{color:#f58200;border-color:rgba(245,130,0,.25)}
+.hc-b{color:var(--blue);border-color:rgba(36,113,163,.25)}
+.hc-s{color:var(--green);border-color:rgba(34,161,89,.25)}
+.hc-d{color:var(--dim);border-color:#1c1c24}
+
+/* SHELL */
+.shell{max-width:780px;padding:0 3rem 8rem}
+
+/* SECTIONS */
+.sect{
+  padding:5rem 0 1rem;border-top:1px solid #0e0e16;
+  opacity:0;animation:riseIn .8s ease forwards;
+}
+.sect:nth-child(1){animation-delay:.05s}
+.sect:nth-child(2){animation-delay:.1s}
+.sect:nth-child(3){animation-delay:.15s}
+.sect:nth-child(4){animation-delay:.2s}
+.sect:nth-child(5){animation-delay:.25s}
+.sect:nth-child(6){animation-delay:.3s}
+.sect:nth-child(7){animation-delay:.35s}
+.sect:nth-child(8){animation-delay:.4s}
+.sect:nth-child(9){animation-delay:.45s}
+.sect:nth-child(10){animation-delay:.5s}
+
+.sect-eyebrow{
+  font-size:.42rem;letter-spacing:.45em;text-transform:uppercase;
+  color:var(--blood);margin-bottom:1rem;
+  display:flex;align-items:center;gap:.8rem;
+}
+.sect-eyebrow::after{content:'';width:3rem;height:1px;background:var(--rust);opacity:.35}
+.sect-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(2.2rem,5vw,3.8rem);
+  letter-spacing:.05em;color:var(--bone);line-height:.95;
+  margin-bottom:1.5rem;
+}
+.sect-title .r{color:var(--blood)}
+.sect-title .g{color:var(--gold)}
+.sect-title .gr{color:var(--green)}
+.sect-title .b{color:var(--blue)}
+.sect-title .p{color:var(--purple)}
+
+/* PROSE */
+.prose{color:var(--muted);font-size:.83rem;line-height:2.05;max-width:64ch}
+.prose+.prose{margin-top:1.1rem}
+.prose strong{color:var(--bone)}
+.prose em{color:var(--gold);font-style:italic}
+.wide{max-width:100%}
+
+/* MANIFESTO QUOTE — full-bleed cinematic */
+.mquote{
+  position:relative;margin:3rem -3rem;padding:3rem 3rem;
+  background:linear-gradient(135deg,rgba(184,40,30,.06),rgba(110,37,24,.04));
+  border-top:1px solid rgba(184,40,30,.2);
+  border-bottom:1px solid rgba(184,40,30,.15);
+  overflow:hidden;
+}
+.mquote::before{
+  content:'\201C';
+  position:absolute;top:-1rem;left:1.5rem;
+  font-family:'Playfair Display',serif;font-size:8rem;
+  color:rgba(184,40,30,.12);line-height:1;pointer-events:none;
+}
+.mquote p{
+  font-family:'Playfair Display',serif;font-style:italic;
+  font-size:1.2rem;color:var(--bone);line-height:1.7;
+  max-width:56ch;position:relative;z-index:1;
+}
+.mquote cite{
+  display:block;margin-top:.8rem;font-family:'Space Mono',monospace;
+  font-size:.45rem;letter-spacing:.35em;text-transform:uppercase;
+  color:var(--blood);font-style:normal;position:relative;z-index:1;
+}
+
+/* CALLOUT */
+.callout{
+  border-left:2px solid var(--gold);
+  background:rgba(196,153,74,.04);
+  padding:1.1rem 1.4rem;margin:2rem 0;
+  border-radius:0 2px 2px 0;
+}
+.callout.b{border-left-color:var(--blue);background:rgba(36,113,163,.04)}
+.callout.g{border-left-color:var(--green);background:rgba(34,161,89,.04)}
+.callout.r{border-left-color:var(--blood);background:rgba(184,40,30,.04)}
+.callout.p{border-left-color:var(--purple);background:rgba(142,68,173,.04)}
+.c-label{
+  font-size:.4rem;letter-spacing:.38em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:.5rem;display:block;
+}
+.callout.b .c-label{color:var(--blue)}
+.callout.g .c-label{color:var(--green)}
+.callout.r .c-label{color:var(--blood)}
+.callout.p .c-label{color:var(--purple)}
+.callout p{font-size:.8rem;color:var(--muted);line-height:1.9}
+.callout p strong{color:var(--bone)}
+
+/* CODE */
+.code{
+  background:var(--smoke);border:1px solid #161620;
+  border-left:2px solid var(--blood);border-radius:2px;
+  padding:1.4rem;margin:1.8rem 0;overflow-x:auto;position:relative;
+}
+.code.b{border-left-color:var(--blue)}
+.code.g{border-left-color:var(--green)}
+.code.p{border-left-color:var(--purple)}
+.code.o{border-left-color:var(--gold)}
+.code.w{border-left-color:var(--bone)}
+.code::before{
+  content:attr(data-lang);position:absolute;top:.5rem;right:.8rem;
+  font-size:.4rem;letter-spacing:.3em;text-transform:uppercase;color:#222230;
+}
+.code code{
+  font-family:'Space Mono',monospace;font-size:.68rem;
+  color:var(--bone);line-height:2;display:block;white-space:pre;
+}
+.c{color:#28283a}.k{color:var(--gold)}.s{color:#6dba78}
+.fn{color:#5b9bd5}.nu{color:var(--blood)}.tp{color:#a67ec8}
+
+/* FLOW CHAIN — cinematic version */
+.flow{
+  display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;
+  margin:2rem 0;padding:1.2rem 1.4rem;
+  background:linear-gradient(90deg,rgba(184,40,30,.04),rgba(5,5,10,0));
+  border:1px solid #161620;border-left:2px solid var(--blood);
+  border-radius:0 2px 2px 0;
+}
+.fnode{
+  font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:.05em;
+  padding:.28rem .65rem;border-radius:2px;
+}
+.farrow{color:var(--rust);font-size:.7rem;opacity:.6}
+.fn-br{background:rgba(236,230,208,.05);color:var(--bone);border:1px solid #1e1e28}
+.fn-fb{background:rgba(245,130,0,.05);color:#f58200;border:1px solid rgba(245,130,0,.18)}
+.fn-gk{background:rgba(36,113,163,.07);color:#5b9bd5;border:1px solid rgba(36,113,163,.2)}
+.fn-py{background:rgba(184,40,30,.07);color:#c46060;border:1px solid rgba(184,40,30,.2)}
+.fn-fs{background:rgba(34,161,89,.06);color:var(--green);border:1px solid rgba(34,161,89,.18)}
+.fn-ui{background:rgba(196,153,74,.06);color:var(--gold);border:1px solid rgba(196,153,74,.18)}
+
+/* PIPELINE STEPS */
+.pipeline{margin-top:2.5rem}
+.pstep{
+  display:grid;grid-template-columns:52px 1fr;gap:1.5rem;
+  position:relative;
+}
+.pstep:not(:last-child)::before{
+  content:'';position:absolute;left:25px;top:48px;bottom:0;
+  width:1px;background:linear-gradient(180deg,rgba(110,37,24,.4),transparent);
+}
+.pnum{width:52px;height:48px;display:flex;align-items:center;justify-content:center}
+.pcircle{
+  width:38px;height:38px;border-radius:50%;
+  border:1px solid rgba(110,37,24,.5);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:1.05rem;color:var(--bone);
+  transition:all .3s;cursor:default;
+}
+.pstep:hover .pcircle{background:var(--blood);border-color:var(--blood)}
+.pbody{padding:.5rem 0 2.8rem;border-bottom:1px solid #0e0e16}
+.pstep:last-child .pbody{border-bottom:none}
+.ptitle{
+  font-family:'Bebas Neue',sans-serif;font-size:1.3rem;
+  letter-spacing:.05em;color:var(--bone);margin-bottom:.2rem;
+}
+.ptech{
+  font-size:.42rem;letter-spacing:.28em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:.7rem;
+}
+.pdesc{font-size:.8rem;color:var(--muted);line-height:2;max-width:58ch}
+.pdesc strong{color:var(--bone)}
+
+/* SCHEMA */
+.schema{
+  background:var(--smoke);border:1px solid #161620;
+  border-left:2px solid var(--green);padding:1.4rem;
+  margin:2rem 0;font-size:.68rem;line-height:2.3;
+}
+.sc{color:var(--green);font-family:'Bebas Neue',sans-serif;font-size:.85rem;letter-spacing:.08em;display:block}
+.sd{color:var(--gold);padding-left:1.5rem;display:block}
+.sf{color:var(--muted);padding-left:3rem;display:block;font-size:.64rem}
+.sfn{color:var(--bone)}.sft{color:var(--blood)}.sfc{color:#1e1e2a}
+.ss{color:#5b9bd5;padding-left:3rem;display:block;font-family:'Bebas Neue',sans-serif;font-size:.75rem;letter-spacing:.06em}
+.ssd{color:#a67ec8;padding-left:4.5rem;display:block}
+.ssf{color:var(--muted);padding-left:6rem;display:block;font-size:.61rem}
+.sss{color:#3a6a5a;padding-left:6rem;display:block;font-family:'Bebas Neue',sans-serif;font-size:.7rem;letter-spacing:.05em}
+.sssd{color:#7060a0;padding-left:7.5rem;display:block}
+.sssf{color:var(--muted);padding-left:9rem;display:block;font-size:.58rem}
+
+/* ARCH NODES */
+.anodes{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:1px;background:var(--mid);border:1px solid var(--mid);margin:2rem 0;
+}
+.anode{background:var(--smoke);padding:1.2rem;transition:background .2s;cursor:default}
+.anode:hover{background:#0f0f16}
+.anode-bar{height:1px;margin:-1.2rem -1.2rem 1rem;background:var(--dim)}
+.anode.cl .anode-bar{background:var(--bone)}
+.anode.py .anode-bar{background:var(--blood)}
+.anode.fb .anode-bar{background:#f58200}
+.anode-label{font-size:.4rem;letter-spacing:.3em;text-transform:uppercase;margin-bottom:.35rem}
+.anode.cl .anode-label{color:var(--bone)}
+.anode.py .anode-label{color:var(--blood)}
+.anode.fb .anode-label{color:#f58200}
+.anode-name{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--bone);letter-spacing:.04em;margin-bottom:.3rem}
+.anode-desc{font-size:.6rem;color:var(--dim);line-height:1.75}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;margin:2rem 0;font-size:.73rem}
+.tbl th{
+  font-size:.4rem;letter-spacing:.3em;text-transform:uppercase;
+  color:var(--blood);padding:.55rem 1rem;text-align:left;
+  border-bottom:1px solid var(--rust);opacity:.65;
+}
+.tbl td{
+  padding:.7rem 1rem;border-bottom:1px solid #0e0e16;
+  color:var(--muted);vertical-align:top;line-height:1.75;
+}
+.tbl tr:hover td{background:#09090e}
+.tbl td:first-child{
+  font-family:'Bebas Neue',sans-serif;font-size:.9rem;
+  color:var(--bone);letter-spacing:.04em;white-space:nowrap;
+}
+.tag{
+  display:inline-block;padding:.1rem .38rem;border-radius:2px;
+  font-size:.4rem;letter-spacing:.2em;text-transform:uppercase;margin-right:.2rem;
+}
+.tg{background:rgba(34,161,89,.08);color:var(--green);border:1px solid rgba(34,161,89,.2)}
+.to{background:rgba(196,153,74,.08);color:var(--gold);border:1px solid rgba(196,153,74,.2)}
+.tr{background:rgba(184,40,30,.08);color:var(--blood);border:1px solid rgba(184,40,30,.2)}
+
+/* FILE TREE */
+.ftree{
+  background:var(--smoke);border:1px solid #161620;
+  padding:1.4rem;margin:2rem 0;font-size:.68rem;line-height:2.2;
+  font-family:'Space Mono',monospace;
+}
+.fd{color:var(--gold)}.ff{color:var(--bone)}.fn2{color:#1c1c26;font-size:.6rem}
+.ffb{color:#f58200}.fgk{color:#5b9bd5}.fpy{color:var(--blood)}.ffs{color:var(--green)}
+
+/* SCORE SCALE */
+.sscale{display:flex;height:6px;border-radius:2px;overflow:hidden;margin:.8rem 0 .4rem}
+.slabels{
+  display:flex;justify-content:space-between;
+  font-size:.4rem;letter-spacing:.2em;color:var(--dim);
+  text-transform:uppercase;margin-bottom:1.2rem;
+}
+
+/* DIVIDER */
+.div{
+  height:1px;margin:3rem 0;
+  background:linear-gradient(90deg,var(--rust),transparent);opacity:.2;
+}
+
+/* CLOSER — cinematic final line */
+.closer{
+  padding:4rem 0 2rem;text-align:center;
+}
+.closer-line{
+  font-family:'Playfair Display',serif;font-style:italic;
+  font-size:1.1rem;color:var(--muted);line-height:1.7;
+}
+.closer-rule{
+  width:80px;height:1px;background:var(--blood);
+  margin:1.5rem auto;opacity:.5;
+}
+.closer-sub{
+  font-size:.42rem;letter-spacing:.4em;text-transform:uppercase;
+  color:#1e1e28;
+}
+
+/* FOOTER */
+.footer{
+  border-top:1px solid #0e0e16;padding-top:1.5rem;margin-top:2rem;
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;
+  font-size:.4rem;letter-spacing:.22em;text-transform:uppercase;color:#181820;
+}
+.footer span{color:var(--rust)}
+
+@keyframes riseIn{
+  from{opacity:0;transform:translateY(20px)}
+  to{opacity:1;transform:translateY(0)}
+}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#030307}
+::-webkit-scrollbar-thumb{background:#151520;border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--rust)}
+
+@media(max-width:800px){
+  .sidenav{display:none}
+  .main{margin-left:0}
+  .hero,.shell{padding-left:1.5rem;padding-right:1.5rem}
+  .mquote{margin-left:-1.5rem;margin-right:-1.5rem;padding-left:1.5rem;padding-right:1.5rem}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDENAV -->
+<nav class="sidenav">
+  <div class="sidenav-brand">
+    <div class="brand-title">VOCAL <em>SURGEON</em></div>
+    <div class="brand-sub">Build Manifesto · v1.0</div>
+  </div>
+  <div class="nav-group">The Case</div>
+  <a href="#s1" class="nav-link"><span class="nav-num">01</span>Founding Insight</a>
+  <a href="#s2" class="nav-link"><span class="nav-num">02</span>System Overview</a>
+  <div class="nav-group">The Engine</div>
+  <a href="#s3" class="nav-link"><span class="nav-num">03</span>Audio Pipeline</a>
+  <a href="#s4" class="nav-link"><span class="nav-num">04</span>Word Identity</a>
+  <div class="nav-group">The Flows</div>
+  <a href="#s5" class="nav-link"><span class="nav-num">05</span>Alignment Flow</a>
+  <a href="#s6" class="nav-link"><span class="nav-num">06</span>EQ Profile Flow</a>
+  <a href="#s7" class="nav-link"><span class="nav-num">07</span>Repair Loop</a>
+  <div class="nav-group">The Output</div>
+  <a href="#s8" class="nav-link"><span class="nav-num">08</span>Client Model</a>
+  <a href="#s9" class="nav-link"><span class="nav-num">09</span>Export Engine</a>
+  <a href="#s10" class="nav-link"><span class="nav-num">10</span>File Layout</a>
+</nav>
+
+<div class="main">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-rule"></div>
+  <div class="hero-watermark">VS</div>
+  <div class="hero-tag">buildwhilebleeding.com · Unified Build Manifesto</div>
+  <div class="hero-title">VOCAL<br><span class="red">SURGEON</span></div>
+  <div class="hero-sub">A tool built on a single conviction: the words were already known. Everything else is surgery.</div>
+  <div class="hero-meta">
+    <div class="hchip hc-r">Lyrics-First</div>
+    <div class="hchip hc-r">Forced Alignment</div>
+    <div class="hchip hc-g">Firebase</div>
+    <div class="hchip hc-b">Genkit AI</div>
+    <div class="hchip hc-s">Firestore</div>
+    <div class="hchip hc-d">WhisperX</div>
+    <div class="hchip hc-d">pedalboard</div>
+    <div class="hchip hc-d">Next.js · TypeScript</div>
+  </div>
+</div>
+
+<div class="shell">
+
+<!-- 01 -->
+<div class="sect" id="s1">
+  <div class="sect-eyebrow">01 · The Case</div>
+  <div class="sect-title">The Founding<br><span class="r">Insight</span></div>
+
+  <p class="prose">Every other vocal repair tool begins with a question: <em>What did they say?</em> Vocal Surgeon begins with an answer. The words are already written. The lyrics exist before the audio is ever loaded. That is not a minor convenience — it is a different epistemology.</p>
+
+  <p class="prose">Most tools run in transcription mode. They listen to a distorted, compressed, AI-generated boom-bap stem and they guess. They guess at slang. They guess at rapid delivery. They guess at glottal stops and ghosted consonant clusters. Then they threshold their confidence and flag the uncertain. Then they pray.</p>
+
+  <div class="mquote">
+    <p>Forced alignment is not a smarter guess. It is the refusal to guess at all. We know <em>devotion</em> lives somewhere in this audio. The only question is exactly where — and how clearly.</p>
+    <cite>— Core design principle</cite>
+  </div>
+
+  <p class="prose">The second conviction: <strong>production context is a processing parameter, not metadata.</strong> "Grimy boom-bap, distorted bass, tight snare cracks" does not go in a label field. It defines the EQ target. The goal is <em>present and gritty</em>. Strip too much and you clean a wound that was also a scar.</p>
+
+  <div class="callout g">
+    <span class="c-label">The Core Shift</span>
+    <p><strong>Transcription:</strong> guess → threshold → flag → pray.<br/><strong>Forced alignment:</strong> known words → locate timestamps → score spectral confidence at known positions → precise repair targets. Same model. Opposite epistemics.</p>
+  </div>
+</div>
+
+<!-- 02 -->
+<div class="sect" id="s2">
+  <div class="sect-eyebrow">02 · The Architecture</div>
+  <div class="sect-title">One Engine,<br><span class="g">Two Surfaces</span></div>
+
+  <p class="prose">Three layers. They never collapse into each other. The boundary is not a preference — it is enforced by design. The Python engine URL lives in a Cloud Function environment variable. The client never touches Python directly. The only authorized bridge is Cloud Functions.</p>
+
+  <div class="anodes">
+    <div class="anode cl">
+      <div class="anode-bar"></div>
+      <div class="anode-label">Control Surface</div>
+      <div class="anode-name">Browser / Mobile</div>
+      <div class="anode-desc">Next.js + TypeScript. Firebase Hosting. Web Audio API. The user sees a word map that updates in real time. They never see compute.</div>
+    </div>
+    <div class="anode py">
+      <div class="anode-bar"></div>
+      <div class="anode-label">Compute Engine · External</div>
+      <div class="anode-name">Python FastAPI</div>
+      <div class="anode-desc">WhisperX · noisereduce · pedalboard · TTS/RVC. Local machine or GPU cloud. Never called directly from the client.</div>
+    </div>
+    <div class="anode fb">
+      <div class="anode-bar"></div>
+      <div class="anode-label">State + Orchestration</div>
+      <div class="anode-name">Firebase</div>
+      <div class="anode-desc">Hosting · Auth · Firestore · Cloud Storage · Cloud Functions · Genkit. Bridges browser and Python. Persists everything. Enforces auth.</div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="fnode fn-br">Browser</div><div class="farrow">→</div>
+    <div class="fnode fn-fb">Cloud Function</div><div class="farrow">→</div>
+    <div class="fnode fn-gk">Genkit Flow</div><div class="farrow">→</div>
+    <div class="fnode fn-py">Python Engine</div><div class="farrow">→</div>
+    <div class="fnode fn-fs">Firestore</div><div class="farrow">→</div>
+    <div class="fnode fn-br">Browser (live)</div>
+  </div>
+
+  <div class="callout r">
+    <span class="c-label">Why Firebase for a Mobile-First Tool</span>
+    <p>Firebase Studio. Firestore's <strong>onSnapshot</strong> real-time listener. Upload, analyze, inspect, repair, export — all on mobile without compromise. The word map updates live over LTE as Python scores arrive. No polling. No reload. Firestore is the reason this works on a phone.</p>
+  </div>
+</div>
+
+<!-- 03 -->
+<div class="sect" id="s3">
+  <div class="sect-eyebrow">03 · The Engine</div>
+  <div class="sect-title">Six Stages.<br><span class="r">No Shortcuts.</span></div>
+
+  <p class="prose">Browser owns stages 1–2. Python owns 3–5. Firestore receives the output of every stage. Every Firebase touchpoint is annotated in line — not in a footnote, not in a separate document.</p>
+
+  <div class="pipeline">
+
+    <div class="pstep">
+      <div class="pnum"><div class="pcircle">1</div></div>
+      <div class="pbody">
+        <div class="ptitle">Audio Buffer Ingestion</div>
+        <div class="ptech">Web Audio API · decodeAudioData() · Cloud Storage · Firestore stemPath</div>
+        <div class="pdesc">The WAV is decoded in the browser into float32 PCM. Simultaneously uploaded to <strong>Cloud Storage</strong>. The storage path written to the Firestore project document. Python reads the WAV later via signed URL — the browser never mediates the compute chain.</div>
+        <div class="code b" data-lang="typescript" style="margin-top:.8rem">
+<code><span class="c">// Decode locally + upload simultaneously</span>
+<span class="k">const</span> buffer = <span class="k">await</span> ctx.<span class="fn">decodeAudioData</span>(<span class="k">await</span> file.<span class="fn">arrayBuffer</span>());
+<span class="k">await</span> <span class="fn">uploadBytesResumable</span>(storageRef, file);
+<span class="k">await</span> <span class="fn">updateDoc</span>(projectRef, { stemPath: storageRef.fullPath });</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="pstep">
+      <div class="pnum"><div class="pcircle">2</div></div>
+      <div class="pbody">
+        <div class="ptitle">Lyric Ground Truth Load</div>
+        <div class="ptech">JSON structure · Deterministic word IDs · Section hierarchy</div>
+        <div class="pdesc">The lyric JSON is the first act of surgery. Every word receives a <strong>deterministic ID</strong> before the audio is touched. This ID is the spine the entire system hangs from — same in the browser, in Python's response, in Firestore, in the DAW marker export.</div>
+        <div class="code" data-lang="id schema" style="margin-top:.8rem">
+<code><span class="c">// w_{sectionIndex}_{lineIndex}_{wordIndex}</span>
+<span class="s">"w_1_5_0"</span>  <span class="c">// Verse 1, Line 6, Word 1 — "So"</span>
+<span class="s">"w_1_5_3"</span>  <span class="c">// Verse 1, Line 6, Word 4 — "serenade"</span>
+<span class="s">"w_3_1_4"</span>  <span class="c">// Hook, Line 2, Word 5 — "weed"</span></code>
+        </div>
+      </div>
+    </div>
+
+    <div class="pstep">
+      <div class="pnum"><div class="pcircle">3</div></div>
+      <div class="pbody">
+        <div class="ptitle">Forced Alignment</div>
+        <div class="ptech">WhisperX · alignment mode · signed URL · Python /align</div>
+        <div class="pdesc">Python reads the WAV. WhisperX runs in <strong>alignment mode</strong> — the known lyrics are passed as the forced transcript. It does not guess. It locates. Returns precise word-level timestamps and spectral confidence scores per word.</div>
+        <div class="code" data-lang="python" style="margin-top:.8rem">
+<code><span class="c"># Not transcription — alignment. Knows every word already.</span>
+result = whisperx.<span class="fn">align</span>(
+    KNOWN_TRANSCRIPT,     <span class="c"># ← ground truth lyrics</span>
+    align_model, metadata,
+    audio, device=<span class="s">"cuda"</span>
+)
+<span class="c"># Returns: start, end, score per word</span></code>
+        </div>
+        <div class="callout b" style="margin-top:.8rem">
+          <span class="c-label">Firebase Touchpoint</span>
+          <p>Genkit <strong>alignFlow</strong> generates the signed URL, POSTs to Python, receives scores, and batch-writes word documents to the Firestore subcollection. Project status transitions <em>analyzing → complete</em>. Browser receives all updates via <code>onSnapshot</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="pstep">
+      <div class="pnum"><div class="pcircle">4</div></div>
+      <div class="pbody">
+        <div class="ptitle">Word-Level Clarity Scoring</div>
+        <div class="ptech">Spectral divergence · Ghost energy · Phoneme confidence delta</div>
+        <div class="pdesc">Every word receives a <strong>0–100 clarity score</strong>. Three signals: spectral confidence at the aligned timestamp, residual ghost energy from adjacent stem bleed, phoneme-level divergence between expected and observed formants.</div>
+        <div class="sscale">
+          <div style="flex:40;background:linear-gradient(90deg,var(--blood),#6e2518)"></div>
+          <div style="flex:35;background:linear-gradient(90deg,var(--rust),var(--gold))"></div>
+          <div style="flex:25;background:linear-gradient(90deg,#1a6040,var(--green))"></div>
+        </div>
+        <div class="slabels">
+          <span style="color:var(--blood)">0 — GHOST</span>
+          <span>40</span><span style="color:var(--gold)">CHECK</span><span>75</span>
+          <span style="color:var(--green)">CLEAN — 100</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pstep">
+      <div class="pnum"><div class="pcircle">5</div></div>
+      <div class="pbody">
+        <div class="ptitle">EQ Profile Application</div>
+        <div class="ptech">pedalboard · PeakFilter · HighShelfFilter · noisereduce</div>
+        <div class="pdesc">The production notes are not decoration. They are the target. <strong>Present and gritty — not pristine.</strong> Sub preserved. Mud cut. Presence lifted for diction. Air conservative. EQ values flow from the Firestore <code>eqProfile</code> map set by the user on mobile.</div>
+        <div class="code" data-lang="python" style="margin-top:.8rem">
+<code><span class="c"># Ghost pass first — then eq from Firestore eqProfile</span>
+audio = nr.<span class="fn">reduce_noise</span>(y=audio, sr=sr, prop_decrease=<span class="nu">0.75</span>)
+board = <span class="fn">Pedalboard</span>([
+    <span class="fn">PeakFilter</span>(hz=<span class="nu">300</span>,  gain_db=eq[<span class="s">"mud"</span>]),       <span class="c"># cut</span>
+    <span class="fn">PeakFilter</span>(hz=<span class="nu">3500</span>, gain_db=eq[<span class="s">"presence"</span>]),   <span class="c"># lift</span>
+    <span class="fn">HighShelfFilter</span>(hz=<span class="nu">10000</span>, gain_db=eq[<span class="s">"air"</span>]),   <span class="c"># whisper</span>
+])</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="pstep">
+      <div class="pnum"><div class="pcircle">6</div></div>
+      <div class="pbody">
+        <div class="ptitle">Surgical Repair & Export</div>
+        <div class="ptech">TTS Blend · RVC · Cleaned WAV · DAW CSV · SRT</div>
+        <div class="pdesc"><strong>Only flagged words get touched.</strong> The entire performance is preserved everywhere else. Boom-bap lives in its imperfections. For ghosted words below 40%: TTS synthesizes the word, volume-matched, blended at the exact timestamp. Cleaned stem written back to Cloud Storage.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 04 -->
+<div class="sect" id="s4">
+  <div class="sect-eyebrow">04 · The Data</div>
+  <div class="sect-title">Word Identity<br><span class="gr">& Schema</span></div>
+
+  <p class="prose">The word ID is created in the browser from the lyric JSON. It keys the Python response. It is the Firestore document ID. It anchors the DAW marker export. One ID, four contexts, zero translation loss.</p>
+
+  <div class="schema">
+    <span class="sc">users/</span>
+    <span class="sd">{userId}/</span>
+    <span class="sf"><span class="sfn">displayName</span>      <span class="sft">string</span>    <span class="sfc">// Google or anonymous</span></span>
+    <span class="sf"><span class="sfn">createdAt</span>        <span class="sft">timestamp</span></span>
+
+    <span class="sc" style="margin-top:.7rem">projects/</span>
+    <span class="sd">{projectId}/</span>
+    <span class="sf"><span class="sfn">userId</span>           <span class="sft">string</span>    <span class="sfc">// owner — enforced by security rules</span></span>
+    <span class="sf"><span class="sfn">title</span>            <span class="sft">string</span>    <span class="sfc">// "WEED YOU OUT"</span></span>
+    <span class="sf"><span class="sfn">stemPath</span>         <span class="sft">string</span>    <span class="sfc">// Cloud Storage path to WAV</span></span>
+    <span class="sf"><span class="sfn">cleanedPath</span>      <span class="sft">string</span>    <span class="sfc">// Storage path after processing</span></span>
+    <span class="sf"><span class="sfn">eqProfile</span>        <span class="sft">map</span>       <span class="sfc">// { sub, mud, presence, air } in dB</span></span>
+    <span class="sf"><span class="sfn">productionNotes</span>  <span class="sft">string</span>    <span class="sfc">// "grimy boom-bap..."</span></span>
+    <span class="sf"><span class="sfn">status</span>           <span class="sft">string</span>    <span class="sfc">// idle | analyzing | complete</span></span>
+
+    <span class="ss">sessions/</span>
+    <span class="ssd">{sessionId}/</span>
+    <span class="ssf"><span class="sfn">runAt</span>            <span class="sft">timestamp</span></span>
+    <span class="ssf"><span class="sfn">totalWords</span>       <span class="sft">number</span></span>
+    <span class="ssf"><span class="sfn">ghostCount</span>       <span class="sft">number</span></span>
+    <span class="ssf"><span class="sfn">avgClarity</span>       <span class="sft">number</span></span>
+
+    <span class="sss" style="padding-left:6rem">words/</span>
+    <span class="sssd">{wordId}/</span>                   <span class="sfc" style="font-size:.58rem">// w_1_5_3 — deterministic</span>
+    <span class="sssf"><span class="sfn">word</span>             <span class="sft">string</span>    <span class="sfc">// "serenade"</span></span>
+    <span class="sssf"><span class="sfn">score</span>            <span class="sft">number</span>    <span class="sfc">// 0–100</span></span>
+    <span class="sssf"><span class="sfn">status</span>           <span class="sft">string</span>    <span class="sfc">// clean | warning | unclear | fixed</span></span>
+    <span class="sssf"><span class="sfn">timestamp</span>        <span class="sft">number</span>    <span class="sfc">// seconds into audio</span></span>
+    <span class="sssf"><span class="sfn">ghostEnergy</span>      <span class="sft">number</span></span>
+    <span class="sssf"><span class="sfn">repairApplied</span>    <span class="sft">boolean</span></span>
+    <span class="sssf"><span class="sfn">approvedBy</span>       <span class="sft">string</span>    <span class="sfc">// "user" | "auto"</span></span>
+    <span class="sssf"><span class="sfn">updatedAt</span>        <span class="sft">timestamp</span></span>
+  </div>
+
+  <div class="callout g">
+    <span class="c-label">Why Subcollection for Words</span>
+    <p>A track has ~150 words. Firestore's 1MB document limit. A single approval would rewrite the entire session. Subcollection = one write per word. The <code>onSnapshot</code> on the words subcollection is what makes the word map update live as Python scores arrive — word by word, chip by chip.</p>
+  </div>
+</div>
+
+<!-- 05 -->
+<div class="sect" id="s5">
+  <div class="sect-eyebrow">05 · The Flows</div>
+  <div class="sect-title">Alignment Flow:<br><span class="b">Lyric → Audio → Firestore</span></div>
+
+  <p class="prose">This is where the lyric JSON, the WAV file, and the Firebase architecture converge. Every arrow below is a real function call. The chain is explicit — not implied across two documents.</p>
+
+  <div class="flow">
+    <div class="fnode fn-br">Lyric JSON</div><div class="farrow">→</div>
+    <div class="fnode fn-br">Forced Transcript</div><div class="farrow">→</div>
+    <div class="fnode fn-py">WhisperX</div><div class="farrow">→</div>
+    <div class="fnode fn-fs">Word Docs</div><div class="farrow">→</div>
+    <div class="fnode fn-ui">Live Map</div>
+  </div>
+
+  <div class="code b" data-lang="genkit · alignFlow.ts">
+<code><span class="k">export const</span> alignFlow = <span class="fn">defineFlow</span>(
+  { name: <span class="s">'alignFlow'</span>, inputSchema: AlignInput },
+  <span class="k">async</span> (input) => {
+
+    <span class="c">// 1. Signed URL — Python reads WAV directly from Storage</span>
+    <span class="k">const</span> [url] = <span class="k">await</span> <span class="fn">getStorage</span>().bucket().<span class="fn">file</span>(input.stemPath)
+      .<span class="fn">getSignedUrl</span>({ action: <span class="s">'read'</span>, expires: Date.now() + <span class="nu">3_600_000</span> });
+
+    <span class="c">// 2. POST lyrics + EQ profile to Python engine</span>
+    <span class="k">const</span> { word_scores } = <span class="k">await</span> <span class="fn">fetch</span>(
+      process.env.PYTHON_ENGINE_URL + <span class="s">'/align'</span>,
+      { method: <span class="s">'POST'</span>, body: <span class="tp">JSON</span>.<span class="fn">stringify</span>({
+          audio_url: url, lyrics: input.lyrics,
+          eq_profile: input.eqProfile
+        }) }
+    ).<span class="fn">then</span>(r => r.<span class="fn">json</span>());
+
+    <span class="c">// 3. Batch write — one Firestore doc per word</span>
+    <span class="k">const</span> batch = db.<span class="fn">batch</span>();
+    <span class="k">for</span> (<span class="k">const</span> [id, data] <span class="k">of</span> <span class="tp">Object</span>.<span class="fn">entries</span>(word_scores)) {
+      batch.<span class="fn">set</span>(wordsRef.<span class="fn">doc</span>(id), { ...data, updatedAt: <span class="k">new</span> <span class="tp">Date</span>() });
+    }
+    <span class="k">await</span> batch.<span class="fn">commit</span>();
+
+    <span class="c">// 4. Status → complete triggers browser word map reveal</span>
+    <span class="k">await</span> projectRef.<span class="fn">update</span>({ status: <span class="s">'complete'</span> });
+  }
+);</code>
+  </div>
+</div>
+
+<!-- 06 -->
+<div class="sect" id="s6">
+  <div class="sect-eyebrow">06 · The Flows</div>
+  <div class="sect-title">EQ Profile Flow:<br><span class="g">Sliders → Python</span></div>
+
+  <p class="prose">Four sliders on mobile. Values that persist, travel, and shape audio. The most elegant round trip in the system — and the most misunderstood. This is not a preview. These values <em>are</em> the processing chain.</p>
+
+  <div class="flow">
+    <div class="fnode fn-ui">EQ Sliders</div><div class="farrow">→</div>
+    <div class="fnode fn-fs">eqProfile map</div><div class="farrow">→</div>
+    <div class="fnode fn-gk">alignFlow payload</div><div class="farrow">→</div>
+    <div class="fnode fn-py">pedalboard chain</div><div class="farrow">→</div>
+    <div class="fnode fn-fs">cleanedPath</div>
+  </div>
+
+  <div class="tbl" style="margin-top:1.5rem">
+    <thead><tr><th>Band</th><th>Range</th><th>Boom-Bap Default</th><th>The Reason</th></tr></thead>
+    <tbody>
+      <tr><td>Sub</td><td>20–80 Hz</td><td>-3 dB</td><td>Controlled low-end. The kick punches through. Don't steal from the drums.</td></tr>
+      <tr><td>Mud</td><td>200–400 Hz</td><td>-4 dB</td><td>The smear zone. Stem artifacts accumulate here. Cut without ceremony.</td></tr>
+      <tr><td>Presence</td><td>2–5 kHz</td><td>+3 dB</td><td>Where consonants live. Where ghosted words go silent. Lift for diction.</td></tr>
+      <tr><td>Air</td><td>8–16 kHz</td><td>+1 dB</td><td>A whisper, not a shout. Too much and you're polishing rust off the soul.</td></tr>
+    </tbody>
+  </div>
+
+  <div class="code o" data-lang="typescript · debounced slider">
+<code><span class="c">// Slider change → Firestore write (debounced 400ms)</span>
+<span class="k">const</span> <span class="fn">onEqChange</span> = <span class="fn">debounce</span>(<span class="k">async</span> (band: <span class="tp">string</span>, val: <span class="tp">number</span>) => {
+  <span class="k">await</span> <span class="fn">updateDoc</span>(projectRef, {
+    [`eqProfile.${band}`]: val,
+    updatedAt: <span class="fn">serverTimestamp</span>()
+  });
+}, <span class="nu">400</span>);</code>
+  </div>
+</div>
+
+<!-- 07 -->
+<div class="sect" id="s7">
+  <div class="sect-eyebrow">07 · The Flows</div>
+  <div class="sect-title">The Repair Loop:<br><span class="p">One Tap. One Word. Done.</span></div>
+
+  <p class="prose">This is the moment the whole system was built for. A single ghosted word. One tap. A round trip through Genkit, Python, and back. The chip on screen flips green. The performance is unchanged everywhere else.</p>
+
+  <div class="mquote">
+    <p>Only flagged words get touched. Boom-bap lives in its imperfections. The goal was never to make it clean — it was to make it <em>heard.</em></p>
+    <cite>— Design constraint, surgical repair</cite>
+  </div>
+
+  <div class="flow">
+    <div class="fnode fn-ui">Tap "TTS Fix"</div><div class="farrow">→</div>
+    <div class="fnode fn-gk">repairFlow</div><div class="farrow">→</div>
+    <div class="fnode fn-py">Python /repair</div><div class="farrow">→</div>
+    <div class="fnode fn-py">TTS · RVC</div><div class="farrow">→</div>
+    <div class="fnode fn-fs">Word doc update</div><div class="farrow">→</div>
+    <div class="fnode fn-ui">Chip → ✓</div>
+  </div>
+
+  <div class="code p" data-lang="genkit · repairFlow.ts">
+<code><span class="k">export const</span> repairFlow = <span class="fn">defineFlow</span>(
+  { name: <span class="s">'repairFlow'</span>, inputSchema: RepairInput },
+  <span class="k">async</span> (input) => {
+
+    <span class="c">// Python synthesizes the word at the exact timestamp</span>
+    <span class="k">const</span> { new_score, repaired_path } = <span class="k">await</span> <span class="fn">fetch</span>(
+      process.env.PYTHON_ENGINE_URL + <span class="s">'/repair'</span>,
+      { method: <span class="s">'POST'</span>, body: <span class="tp">JSON</span>.<span class="fn">stringify</span>(input) }
+    ).<span class="fn">then</span>(r => r.<span class="fn">json</span>());
+
+    <span class="c">// One Firestore write. One word. Real-time on mobile.</span>
+    <span class="k">await</span> wordsRef.<span class="fn">doc</span>(input.wordId).<span class="fn">update</span>({
+      status:        <span class="s">'fixed'</span>,
+      score:         new_score,
+      repairApplied: <span class="k">true</span>,
+      updatedAt:     <span class="k">new</span> <span class="tp">Date</span>()
+    });
+
+    <span class="k">return</span> { repaired_path, new_score };
+  }
+);</code>
+  </div>
+
+  <div class="callout p">
+    <span class="c-label">TTS vs RVC</span>
+    <p><strong>TTS (Tortoise / Bark):</strong> No reference audio needed. Synthesizes from text. Volume-matched, blended at timestamp. Detectable on close listening.<br/><strong>RVC:</strong> Requires clean reference audio of the same artist. Voice conversion — same voice, sharper diction. Indistinguishable. The preferred option when it exists.</p>
+  </div>
+</div>
+
+<!-- 08 -->
+<div class="sect" id="s8">
+  <div class="sect-eyebrow">08 · The Client</div>
+  <div class="sect-title">The Interaction<br><span class="r">Model</span></div>
+
+  <p class="prose">Eight steps. No reload. No polling. Every state change reflected instantly via Firestore real-time listeners. This is not a web app that happens to work on mobile. This is a mobile tool that happens to run in a browser.</p>
+
+  <div class="tbl">
+    <thead><tr><th>Step</th><th>Action</th><th>What Fires</th><th>Firebase</th></tr></thead>
+    <tbody>
+      <tr><td>Upload</td><td>Drop WAV</td><td>Web Audio decode · waveform canvas drawn</td><td><span class="tag tg">Storage upload</span> <span class="tag tg">stemPath → Firestore</span></td></tr>
+      <tr><td>Load Lyrics</td><td>Demo or JSON paste</td><td>Word IDs generated · map scaffold rendered grey</td><td>Local only</td></tr>
+      <tr><td>Set EQ</td><td>Adjust sliders</td><td>Curve updates live</td><td><span class="tag tg">eqProfile → Firestore</span></td></tr>
+      <tr><td>Analyze</td><td>Tap ANALYZE</td><td>Scan overlay · status → analyzing</td><td><span class="tag tg">analyzeStem called</span> <span class="tag to">alignFlow fires</span></td></tr>
+      <tr><td>Stream</td><td>Watch map</td><td>Words flip green/gold/red as scores arrive</td><td><span class="tag tg">onSnapshot words/</span></td></tr>
+      <tr><td>Inspect</td><td>Tap any word</td><td>Inspector: score, timestamp, ghost energy</td><td>Local state read</td></tr>
+      <tr><td>Repair</td><td>Tap TTS Fix</td><td>repairWord called · chip flips green ✓</td><td><span class="tag to">repairFlow fires</span> <span class="tag tg">word doc updated</span></td></tr>
+      <tr><td>Export</td><td>Choose format · Export</td><td>Blob downloaded to device</td><td><span class="tag tg">cleanedPath from Storage</span></td></tr>
+    </tbody>
+  </div>
+
+  <div class="code w" data-lang="typescript · real-time listener">
+<code><span class="c">// Subscribe — word chips update live as Python scores arrive</span>
+<span class="fn">onSnapshot</span>(wordsRef, (snapshot) => {
+  snapshot.<span class="fn">docChanges</span>().<span class="fn">forEach</span>(change => {
+    <span class="k">if</span> ([<span class="s">'added'</span>, <span class="s">'modified'</span>].includes(change.type)) {
+      <span class="k">const</span> { score, status } = change.doc.<span class="fn">data</span>();
+      <span class="fn">updateWordChip</span>(change.doc.id, score, status);
+    }
+  });
+});</code>
+  </div>
+</div>
+
+<!-- 09 -->
+<div class="sect" id="s9">
+  <div class="sect-eyebrow">09 · The Output</div>
+  <div class="sect-title">Four Formats.<br><span class="g">Nothing Wasted.</span></div>
+
+  <div class="tbl">
+    <thead><tr><th>Format</th><th>Contents</th><th>Next Step</th></tr></thead>
+    <tbody>
+      <tr><td>WAV</td><td>Cleaned vocal stem · EQ applied · ghost-reduced · 24-bit · samplerate preserved</td><td>Drop back into DAW session</td></tr>
+      <tr><td>TXT</td><td>Word timestamps, clarity scores, flagged regions, ghost energy per word</td><td>Reference for manual punch-in decisions</td></tr>
+      <tr><td>CSV</td><td><code style="font-size:.65rem">timestamp, label, clarity, action</code> — one row per ghosted word</td><td>Import into Pro Tools / Logic / Ableton as labeled markers</td></tr>
+      <tr><td>SRT</td><td>Time-coded transcript · ghosted words marked with repair indicator</td><td>Lyric videos · closed captions · video export</td></tr>
+    </tbody>
+  </div>
+
+  <div class="code" data-lang="csv · daw markers">
+<code><span class="c"># Every ghosted word becomes a labeled punch-in point</span>
+timestamp,label,clarity,action
+<span class="nu">14.230</span>,devotion,<span class="nu">18</span>%,REPAIR
+<span class="nu">22.441</span>,aesthetics,<span class="nu">23</span>%,REPAIR
+<span class="nu">31.887</span>,confessions,<span class="nu">21</span>%,REPAIR
+<span class="nu">58.112</span>,interrogate,<span class="nu">17</span>%,REPAIR</code>
+  </div>
+</div>
+
+<!-- 10 -->
+<div class="sect" id="s10">
+  <div class="sect-eyebrow">10 · The Structure</div>
+  <div class="sect-title">The Monorepo.<br><span class="r">One House.</span></div>
+
+  <p class="prose">Firebase Studio scaffolds everything inside <code>vocal-surgeon/</code>. The Python engine is the only external dependency — separate server, separate repo if preferred. The boundary is physical, not just conceptual.</p>
+
+  <div class="ftree">
+<span class="fd">vocal-surgeon/</span>
+├── <span class="ffb">firebase.json</span>                  <span class="fn2">← hosting, functions, firestore rules</span>
+├── <span class="ffb">firestore.rules</span>                <span class="fn2">← auth-scoped ownership chain</span>
+├── <span class="ffb">storage.rules</span>
+│
+├── <span class="fd">src/</span>                           <span class="fn2">← Next.js app (Firebase Hosting)</span>
+│   ├── <span class="fd">app/</span>
+│   │   └── <span class="ff">page.tsx</span>               <span class="fn2">← VocalSurgeon main component</span>
+│   ├── <span class="fd">components/</span>
+│   │   ├── <span class="ff">WaveformCanvas.tsx</span>
+│   │   ├── <span class="ff">WordMap.tsx</span>
+│   │   ├── <span class="ff">Inspector.tsx</span>
+│   │   ├── <span class="ff">EQPanel.tsx</span>
+│   │   └── <span class="ff">ExportPanel.tsx</span>
+│   ├── <span class="ffs">lib/firestore.ts</span>           <span class="fn2">← session read/write helpers</span>
+│   ├── <span class="ffs">lib/storage.ts</span>             <span class="fn2">← WAV upload helpers</span>
+│   └── <span class="fd">assets/lyrics/</span>
+│       └── <span class="ff">weed-you-out.json</span>      <span class="fn2">← ground truth lyric data</span>
+│
+├── <span class="fd">functions/</span>                     <span class="fn2">← Cloud Functions (Node.js)</span>
+│   ├── <span class="fgk">genkit.config.ts</span>
+│   ├── <span class="fgk">flows/alignFlow.ts</span>         <span class="fn2">← orchestrates alignment</span>
+│   ├── <span class="fgk">flows/repairFlow.ts</span>        <span class="fn2">← orchestrates TTS repair</span>
+│   └── <span class="ff">index.ts</span>                   <span class="fn2">← exports analyzeStem, repairWord</span>
+│
+└── <span class="fpy">python-engine/</span>                 <span class="fn2">← NOT in Firebase · separate server</span>
+    ├── <span class="fpy">main.py</span>                    <span class="fn2">← FastAPI app</span>
+    ├── <span class="fpy">align.py</span>                   <span class="fn2">← WhisperX forced alignment</span>
+    ├── <span class="fpy">clean.py</span>                   <span class="fn2">← noisereduce + pedalboard EQ</span>
+    ├── <span class="fpy">repair.py</span>                  <span class="fn2">← TTS blend / RVC</span>
+    └── <span class="fpy">requirements.txt</span>
+  </div>
+
+  <div class="callout r">
+    <span class="c-label">Python Engine Deployment</span>
+    <p><strong>Local:</strong> <code>uvicorn main:app --host 0.0.0.0 --port 8000</code>. Set <code>PYTHON_ENGINE_URL</code> in Functions config. Fast iteration.<br/><strong>GPU cloud (production):</strong> Runpod, Modal, or Replicate. WhisperX on CUDA drops from minutes to seconds.<br/><strong>Apple Silicon:</strong> <code>device="mps"</code> in WhisperX calls. Significant local speedup, no cloud cost.</p>
+  </div>
+
+  <div class="div"></div>
+
+  <div class="closer">
+    <div class="closer-line">
+      "This is not documentation.<br/>
+      This is a door.<br/>
+      Documentation describes the room.<br/>
+      A door opens it."
+    </div>
+    <div class="closer-rule"></div>
+    <div class="closer-sub">Vocal Surgeon · Build Manifesto · buildwhilebleeding.com</div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div>VOCAL SURGEON · BUILD MANIFESTO · <span>buildwhilebleeding.com</span></div>
+  <div>LYRICS-FIRST · FORCED ALIGNMENT · BOOM-BAP · FIREBASE</div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+const sections = document.querySelectorAll('.sect[id]');
+const links = document.querySelectorAll('.nav-link');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const a = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+      if (a) a.classList.add('active');
+    }
+  });
+}, { rootMargin:'-30% 0px -60% 0px' });
+sections.forEach(s => io.observe(s));
+</script>
+</body>
+</html>

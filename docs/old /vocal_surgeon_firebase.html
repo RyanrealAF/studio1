@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOCAL SURGEON — Firebase Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:#080808;--bone:#ede8d8;--blood:#c0392b;--rust:#7a3020;
+    --gold:#c9a84c;--green:#2ecc71;--blue:#4a9eff;--purple:#9b59b6;
+    --smoke:#111;--mid:#1a1a1a;--dim:#555;--muted:#9a8f7e;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--ink);color:var(--bone);font-family:'Space Mono',monospace;font-size:13px;line-height:1.8;overflow-x:hidden;cursor:crosshair}
+  body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.5}
+  .shell{max-width:960px;margin:0 auto;padding:4rem 1.5rem 6rem}
+  .doc-header{border-bottom:1px solid var(--rust);padding-bottom:3rem;margin-bottom:4rem;opacity:0;animation:fadeUp .8s .1s ease forwards}
+  .doc-brand{font-size:.5rem;letter-spacing:.4em;text-transform:uppercase;color:var(--gold);margin-bottom:1.5rem}
+  .doc-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(3rem,9vw,6.5rem);line-height:.9;letter-spacing:.06em;color:var(--bone)}
+  .doc-title span{color:var(--blood)}
+  .doc-sub{font-family:'Playfair Display',serif;font-style:italic;font-size:1rem;color:var(--muted);max-width:55ch;line-height:1.7;margin-top:1.2rem}
+  .doc-meta{display:flex;gap:.6rem;margin-top:1.8rem;flex-wrap:wrap}
+  .meta-chip{font-size:.45rem;letter-spacing:.25em;text-transform:uppercase;padding:.35rem .7rem;border:1px solid #222;color:var(--dim);border-radius:2px}
+  .meta-chip.fire{border-color:#f5820044;color:#f58200}
+  .meta-chip.gen{border-color:#4a9eff44;color:var(--blue)}
+  .meta-chip.store{border-color:#2ecc7144;color:var(--green)}
+  .meta-chip.fn{border-color:#9b59b644;color:var(--purple)}
+  .doc-section{margin-bottom:4rem;opacity:0;animation:fadeUp .7s ease forwards}
+  .doc-section:nth-child(2){animation-delay:.15s}
+  .doc-section:nth-child(3){animation-delay:.25s}
+  .doc-section:nth-child(4){animation-delay:.35s}
+  .doc-section:nth-child(5){animation-delay:.45s}
+  .doc-section:nth-child(6){animation-delay:.55s}
+  .doc-section:nth-child(7){animation-delay:.65s}
+  .section-label{font-size:.5rem;letter-spacing:.4em;text-transform:uppercase;color:var(--blood);margin-bottom:1.2rem;display:flex;align-items:center;gap:.8rem}
+  .section-label::after{content:'';flex:1;height:1px;background:var(--rust);opacity:.3;max-width:5rem}
+  .section-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(1.8rem,4vw,2.8rem);letter-spacing:.06em;color:var(--bone);margin-bottom:1.2rem;line-height:1}
+  .section-title .red{color:var(--blood)}
+  .section-title .blue{color:var(--blue)}
+  .section-title .green{color:var(--green)}
+  .section-title .purple{color:var(--purple)}
+  .section-title .gold{color:var(--gold)}
+  .prose{color:var(--muted);font-size:.82rem;line-height:2;max-width:68ch}
+  .prose strong{color:var(--bone)}
+  .prose em{color:var(--gold);font-style:italic}
+
+  /* ARCH NODES */
+  .arch-row{display:flex;align-items:stretch;gap:0;margin-bottom:2px;flex-wrap:wrap}
+  .arch-node{flex:1;min-width:200px;padding:1.2rem 1rem;background:var(--smoke);border:1px solid #1a1a1a;transition:background .2s;cursor:default}
+  .arch-node:hover{background:#151515}
+  .arch-node.firebase{border-top:2px solid #f58200}
+  .arch-node.genkit{border-top:2px solid var(--blue)}
+  .arch-node.firestore{border-top:2px solid var(--green)}
+  .arch-node.storage{border-top:2px solid var(--gold)}
+  .arch-node.functions{border-top:2px solid var(--purple)}
+  .arch-node.python{border-top:2px solid var(--blood)}
+  .arch-node.client{border-top:2px solid var(--bone)}
+  .arch-node-label{font-size:.45rem;letter-spacing:.3em;text-transform:uppercase;margin-bottom:.4rem}
+  .arch-node.firebase .arch-node-label{color:#f58200}
+  .arch-node.genkit .arch-node-label{color:var(--blue)}
+  .arch-node.firestore .arch-node-label{color:var(--green)}
+  .arch-node.storage .arch-node-label{color:var(--gold)}
+  .arch-node.functions .arch-node-label{color:var(--purple)}
+  .arch-node.python .arch-node-label{color:var(--blood)}
+  .arch-node.client .arch-node-label{color:var(--bone)}
+  .arch-node-name{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.05em;color:var(--bone);margin-bottom:.3rem}
+  .arch-node-desc{font-size:.6rem;color:var(--dim);line-height:1.7}
+  .arch-arrow{display:flex;justify-content:center;align-items:center;padding:.6rem 0}
+  .arch-arrow::before,.arch-arrow::after{content:'';flex:1;height:1px;background:#1a1a1a}
+  .arch-arrow span{padding:0 .8rem;font-size:.45rem;letter-spacing:.25em;text-transform:uppercase;color:var(--rust)}
+
+  /* CODE */
+  .code-block{background:var(--smoke);border:1px solid #1f1f1f;border-left:3px solid var(--blood);border-radius:2px;padding:1.5rem;margin:1.5rem 0;overflow-x:auto;position:relative}
+  .code-block.blue{border-left-color:var(--blue)}
+  .code-block.green{border-left-color:var(--green)}
+  .code-block.purple{border-left-color:var(--purple)}
+  .code-block.gold{border-left-color:var(--gold)}
+  .code-block.white{border-left-color:var(--bone)}
+  .code-block::before{content:attr(data-lang);position:absolute;top:.6rem;right:.8rem;font-size:.45rem;letter-spacing:.3em;text-transform:uppercase;color:#333}
+  .code-block code{font-family:'Space Mono',monospace;font-size:.72rem;color:var(--bone);line-height:1.9;display:block;white-space:pre}
+  .c{color:#3a3a3a}.k{color:var(--gold)}.s{color:#7ec88a}.fn{color:var(--blue)}.num{color:var(--blood)}.t{color:var(--purple)}
+
+  /* SCHEMA */
+  .schema-tree{background:var(--smoke);border:1px solid #1a1a1a;border-left:3px solid var(--green);padding:1.5rem;margin:1.5rem 0;font-size:.72rem;line-height:2.2}
+  .col{color:var(--green);font-family:'Bebas Neue',sans-serif;font-size:.9rem;letter-spacing:.08em;display:block}
+  .doc{color:var(--gold);padding-left:1.5rem;display:block}
+  .field{color:var(--muted);padding-left:3rem;display:block;font-size:.68rem}
+  .fname{color:var(--bone)}
+  .ftype{color:var(--blood)}
+  .fcomment{color:#2e2e2e}
+  .subcol{color:var(--blue);padding-left:3rem;display:block;font-family:'Bebas Neue',sans-serif;font-size:.8rem;letter-spacing:.06em}
+  .subdoc{color:var(--purple);padding-left:4.5rem;display:block}
+  .subfield{color:var(--muted);padding-left:6rem;display:block;font-size:.65rem}
+
+  /* FLOW */
+  .flow{display:flex;flex-direction:column;margin:1.5rem 0}
+  .flow-step{display:grid;grid-template-columns:48px 1fr;gap:1rem;position:relative}
+  .flow-step:not(:last-child)::before{content:'';position:absolute;left:23px;top:44px;bottom:0;width:1px;background:linear-gradient(to bottom,#333,transparent)}
+  .flow-num{width:48px;height:44px;display:flex;align-items:center;justify-content:center}
+  .flow-circle{width:32px;height:32px;border-radius:50%;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:var(--bone);transition:all .3s}
+  .flow-step:hover .flow-circle{background:var(--blood);border-color:var(--blood)}
+  .flow-body{padding:.6rem 0 2rem;border-bottom:1px solid #111}
+  .flow-step:last-child .flow-body{border-bottom:none}
+  .flow-title{font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:.05em;color:var(--bone);margin-bottom:.2rem}
+  .flow-tech{font-size:.45rem;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-bottom:.5rem}
+  .flow-desc{font-size:.78rem;color:var(--muted);line-height:1.9;max-width:60ch}
+  .flow-desc strong{color:var(--bone)}
+
+  /* CALLOUT */
+  .callout{border-left:3px solid var(--gold);background:rgba(201,168,76,.04);padding:1.1rem 1.4rem;margin:1.2rem 0;border-radius:0 2px 2px 0}
+  .callout.blue{border-left-color:var(--blue);background:rgba(74,158,255,.04)}
+  .callout.green{border-left-color:var(--green);background:rgba(46,204,113,.04)}
+  .callout.red{border-left-color:var(--blood);background:rgba(192,57,43,.04)}
+  .callout.purple{border-left-color:var(--purple);background:rgba(155,89,182,.04)}
+  .callout-label{font-size:.45rem;letter-spacing:.35em;text-transform:uppercase;color:var(--gold);margin-bottom:.4rem;display:block}
+  .callout.blue .callout-label{color:var(--blue)}
+  .callout.green .callout-label{color:var(--green)}
+  .callout.red .callout-label{color:var(--blood)}
+  .callout.purple .callout-label{color:var(--purple)}
+  .callout p{font-size:.78rem;color:var(--muted);line-height:1.8}
+  .callout p strong{color:var(--bone)}
+
+  /* FILE TREE */
+  .file-tree{background:var(--smoke);border:1px solid #1a1a1a;padding:1.5rem;margin:1.5rem 0;font-size:.72rem;line-height:2.2;font-family:'Space Mono',monospace}
+  .ft-dir{color:var(--gold)}
+  .ft-file{color:var(--bone)}
+  .ft-note{color:#2e2e2e;font-size:.62rem}
+  .ft-firebase{color:#f58200}
+  .ft-genkit{color:var(--blue)}
+  .ft-python{color:var(--blood)}
+  .ft-store{color:var(--green)}
+
+  .doc-footer{border-top:1px solid #1a1a1a;padding-top:2rem;margin-top:4rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem;font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;color:#2a2a2a}
+  .doc-footer span{color:var(--rust)}
+  ::-webkit-scrollbar{width:4px}
+  ::-webkit-scrollbar-track{background:#0a0a0a}
+  ::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:2px}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="doc-header">
+  <div class="doc-brand">buildwhilebleeding.com · Firebase Architecture · Vocal Surgeon</div>
+  <div class="doc-title">FIREBASE<br><span>STRUCTURE</span></div>
+  <div class="doc-sub">Firestore schema, Genkit flow, and Cloud Function layout — mobile-first, Studio-compatible.</div>
+  <div class="doc-meta">
+    <div class="meta-chip fire">Firebase Hosting</div>
+    <div class="meta-chip gen">Genkit AI</div>
+    <div class="meta-chip store">Firestore</div>
+    <div class="meta-chip store">Cloud Storage</div>
+    <div class="meta-chip fn">Cloud Functions</div>
+    <div class="meta-chip">Firebase Auth</div>
+  </div>
+</div>
+
+<!-- ARCHITECTURE -->
+<div class="doc-section">
+  <div class="section-label">System Map</div>
+  <div class="section-title">Full <span class="red">Architecture</span></div>
+  <p class="prose">Five Firebase services plus one external Python compute instance. Everything inside Firebase is managed from Studio. The Python engine is the only external dependency — called only when a word needs alignment or repair.</p>
+  <div style="margin:2rem 0">
+    <div class="arch-row">
+      <div class="arch-node client">
+        <div class="arch-node-label">Client</div>
+        <div class="arch-node-name">Firebase Hosting</div>
+        <div class="arch-node-desc">Vocal Surgeon UI · Web Audio API · Word Map · Mobile-first · CDN served</div>
+      </div>
+      <div class="arch-node firebase">
+        <div class="arch-node-label">Auth</div>
+        <div class="arch-node-name">Firebase Auth</div>
+        <div class="arch-node-desc">Anonymous or Google sign-in · Sessions scoped to current user · Firestore rules enforced</div>
+      </div>
+    </div>
+    <div class="arch-arrow"><span>client calls</span></div>
+    <div class="arch-row">
+      <div class="arch-node genkit">
+        <div class="arch-node-label">AI Layer</div>
+        <div class="arch-node-name">Genkit Flow</div>
+        <div class="arch-node-desc">Orchestrates alignment request · Calls Cloud Function · Returns word scores to client</div>
+      </div>
+      <div class="arch-node storage">
+        <div class="arch-node-label">File Storage</div>
+        <div class="arch-node-name">Cloud Storage</div>
+        <div class="arch-node-desc">WAV uploaded here · Python reads via signed URL · Cleaned stem written back</div>
+      </div>
+    </div>
+    <div class="arch-arrow"><span>function triggers</span></div>
+    <div class="arch-row">
+      <div class="arch-node functions">
+        <div class="arch-node-label">Middleware</div>
+        <div class="arch-node-name">Cloud Function</div>
+        <div class="arch-node-desc">onCall HTTP · Receives lyric JSON + storage path · POSTs to Python · Returns scores</div>
+      </div>
+      <div class="arch-node firestore">
+        <div class="arch-node-label">Persistence</div>
+        <div class="arch-node-name">Firestore</div>
+        <div class="arch-node-desc">Projects · Sessions · Word scores · Repair states · EQ settings · Persists across mobile sessions</div>
+      </div>
+    </div>
+    <div class="arch-arrow"><span>http post</span></div>
+    <div class="arch-row">
+      <div class="arch-node python" style="flex:2">
+        <div class="arch-node-label">Compute · External</div>
+        <div class="arch-node-name">Python FastAPI — WhisperX · noisereduce · pedalboard · TTS</div>
+        <div class="arch-node-desc">Runs locally or on GPU cloud (Runpod / Modal / Replicate) · Accepts WAV + lyrics · Returns word-level scores + cleaned audio · Not inside Firebase</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FILE STRUCTURE -->
+<div class="doc-section">
+  <div class="section-label">File Layout</div>
+  <div class="section-title">Project <span class="red">Structure</span></div>
+  <p class="prose">Firebase Studio scaffolds most of this. Standard Firebase + Genkit monorepo — frontend and functions co-located.</p>
+  <div class="file-tree">
+<span class="ft-dir">vocal-surgeon/</span>
+├── <span class="ft-firebase">firebase.json</span>             <span class="ft-note">← hosting, functions, firestore rules</span>
+├── <span class="ft-firebase">.firebaserc</span>               <span class="ft-note">← project alias</span>
+├── <span class="ft-firebase">firestore.rules</span>           <span class="ft-note">← auth-scoped read/write rules</span>
+├── <span class="ft-firebase">firestore.indexes.json</span>    <span class="ft-note">← composite indexes</span>
+├── <span class="ft-firebase">storage.rules</span>             <span class="ft-note">← WAV upload permissions</span>
+│
+├── <span class="ft-dir">public/</span>                    <span class="ft-note">← Firebase Hosting root</span>
+│   ├── <span class="ft-file">index.html</span>              <span class="ft-note">← Vocal Surgeon UI shell</span>
+│   ├── <span class="ft-file">app.js</span>                  <span class="ft-note">← Web Audio API, word map, inspector</span>
+│   ├── <span class="ft-store">firestore.js</span>            <span class="ft-note">← session read/write helpers</span>
+│   ├── <span class="ft-store">storage.js</span>              <span class="ft-note">← WAV upload to Cloud Storage</span>
+│   └── <span class="ft-dir">lyrics/</span>
+│       └── <span class="ft-file">weed-you-out.json</span>    <span class="ft-note">← ground truth lyric data</span>
+│
+├── <span class="ft-dir">functions/</span>
+│   ├── <span class="ft-file">package.json</span>
+│   ├── <span class="ft-genkit">genkit.config.js</span>        <span class="ft-note">← Genkit plugin setup</span>
+│   ├── <span class="ft-genkit">flows/</span>
+│   │   ├── <span class="ft-genkit">alignFlow.js</span>        <span class="ft-note">← orchestrates alignment call</span>
+│   │   └── <span class="ft-genkit">repairFlow.js</span>       <span class="ft-note">← orchestrates TTS repair</span>
+│   └── <span class="ft-file">index.js</span>                <span class="ft-note">← exports all callable functions</span>
+│
+└── <span class="ft-python">python-engine/</span>             <span class="ft-note">← NOT in Firebase. Separate server.</span>
+    ├── <span class="ft-python">main.py</span>                 <span class="ft-note">← FastAPI app</span>
+    ├── <span class="ft-python">align.py</span>                <span class="ft-note">← WhisperX forced alignment</span>
+    ├── <span class="ft-python">clean.py</span>                <span class="ft-note">← noisereduce + pedalboard EQ</span>
+    ├── <span class="ft-python">repair.py</span>               <span class="ft-note">← TTS blend / RVC</span>
+    └── <span class="ft-python">requirements.txt</span>
+  </div>
+</div>
+
+<!-- FIRESTORE SCHEMA -->
+<div class="doc-section">
+  <div class="section-label">Firestore</div>
+  <div class="section-title">Database <span class="green">Schema</span></div>
+  <p class="prose">Three top-level collections. Everything scoped to <strong>userId</strong>. Word scores live in a subcollection so approvals update a single document — not the whole session.</p>
+  <div class="schema-tree">
+    <span class="col">users/</span>
+    <span class="doc">{userId}/</span>
+    <span class="field"><span class="fname">displayName</span>   <span class="ftype">string</span>    <span class="fcomment">// Google or anonymous</span></span>
+    <span class="field"><span class="fname">createdAt</span>     <span class="ftype">timestamp</span></span>
+    <span class="field"><span class="fname">lastActive</span>    <span class="ftype">timestamp</span></span>
+
+    <span class="col" style="margin-top:.8rem">projects/</span>
+    <span class="doc">{projectId}/</span>
+    <span class="field"><span class="fname">userId</span>        <span class="ftype">string</span>    <span class="fcomment">// owner</span></span>
+    <span class="field"><span class="fname">title</span>         <span class="ftype">string</span>    <span class="fcomment">// track name</span></span>
+    <span class="field"><span class="fname">stemPath</span>      <span class="ftype">string</span>    <span class="fcomment">// Cloud Storage path to WAV</span></span>
+    <span class="field"><span class="fname">cleanedPath</span>   <span class="ftype">string</span>    <span class="fcomment">// Storage path after processing</span></span>
+    <span class="field"><span class="fname">eqProfile</span>     <span class="ftype">map</span>       <span class="fcomment">// { sub, mud, presence, air } dB values</span></span>
+    <span class="field"><span class="fname">productionNotes <span class="ftype">string</span> <span class="fcomment">// "grimy boom-bap..."</span></span></span>
+    <span class="field"><span class="fname">status</span>        <span class="ftype">string</span>    <span class="fcomment">// idle | analyzing | complete</span></span>
+    <span class="field"><span class="fname">updatedAt</span>     <span class="ftype">timestamp</span></span>
+
+    <span class="subcol">sessions/</span>
+    <span class="subdoc">{sessionId}/</span>
+    <span class="subfield"><span class="fname">runAt</span>         <span class="ftype">timestamp</span></span>
+    <span class="subfield"><span class="fname">totalWords</span>    <span class="ftype">number</span></span>
+    <span class="subfield"><span class="fname">cleanCount</span>    <span class="ftype">number</span></span>
+    <span class="subfield"><span class="fname">ghostCount</span>    <span class="ftype">number</span></span>
+    <span class="subfield"><span class="fname">avgClarity</span>    <span class="ftype">number</span>    <span class="fcomment">// 0–100</span></span>
+
+    <span class="subcol" style="padding-left:4.5rem">words/</span>
+    <span class="subdoc" style="padding-left:6rem">{wordId}/</span>
+    <span class="subfield" style="padding-left:7.5rem"><span class="fname">word</span>          <span class="ftype">string</span></span>
+    <span class="subfield" style="padding-left:7.5rem"><span class="fname">score</span>         <span class="ftype">number</span>    <span class="fcomment">// 0–100</span></span>
+    <span class="subfield" style="padding-left:7.5rem"><span class="fname">status</span>        <span class="ftype">string</span>    <span class="fcomment">// clean|warning|unclear|fixed</span></span>
+    <span class="subfield" style="padding-left:7.5rem"><span class="fname">timestamp</span>     <span class="ftype">number</span>    <span class="fcomment">// seconds into audio</span></span>
+    <span class="subfield" style="padding-left:7.5rem"><span class="fname">ghostEnergy</span>   <span class="ftype">number</span></span>
+    <span class="subfield" style="padding-left:7.5rem"><span class="fname">repairApplied</span> <span class="ftype">boolean</span></span>
+    <span class="subfield" style="padding-left:7.5rem"><span class="fname">approvedBy</span>    <span class="ftype">string</span>    <span class="fcomment">// "user" | "auto"</span></span>
+    <span class="subfield" style="padding-left:7.5rem"><span class="fname">updatedAt</span>     <span class="ftype">timestamp</span></span>
+  </div>
+  <div class="callout green">
+    <span class="callout-label">Why Subcollection for Words</span>
+    <p>~150 words per track. One Firestore document has a <strong>1MB limit</strong> and a single approval rewrites everything. Subcollection = one write per word, real-time sync on mobile, no overwrites.</p>
+  </div>
+</div>
+
+<!-- GENKIT FLOWS -->
+<div class="doc-section">
+  <div class="section-label">Genkit</div>
+  <div class="section-title">AI <span class="blue">Flows</span></div>
+  <p class="prose">Two Genkit flows. <strong>alignFlow</strong> is the bridge between the client and the Python engine. <strong>repairFlow</strong> handles TTS blend requests per ghosted word.</p>
+
+  <div class="code-block blue" data-lang="flows/alignFlow.js">
+<code><span class="k">import</span> { defineFlow, run } from <span class="s">'@genkit-ai/flow'</span>;
+<span class="k">import</span> { z } from <span class="s">'zod'</span>;
+<span class="k">import</span> { getStorage } from <span class="s">'firebase-admin/storage'</span>;
+<span class="k">import</span> { getFirestore } from <span class="s">'firebase-admin/firestore'</span>;
+
+<span class="c">// Input schema — validated at the edge</span>
+<span class="k">const</span> AlignInput = z.object({
+  projectId:  z.string(),
+  sessionId:  z.string(),
+  stemPath:   z.string(),   <span class="c">// Cloud Storage path</span>
+  lyrics:     z.array(z.object({
+    section:  z.string(),
+    lines:    z.array(z.array(z.string()))
+  })),
+  eqProfile:  z.object({
+    sub: z.number(), mud: z.number(),
+    presence: z.number(), air: z.number()
+  })
+});
+
+<span class="k">export const</span> alignFlow = defineFlow(
+  { name: <span class="s">'alignFlow'</span>, inputSchema: AlignInput },
+  async (input) =&gt; {
+
+    <span class="c">// 1. Signed URL so Python can read the WAV</span>
+    <span class="k">const</span> [signedUrl] = await getStorage()
+      .bucket().file(input.stemPath)
+      .getSignedUrl({ action: <span class="s">'read'</span>, expires: Date.now() + <span class="num">3600000</span> });
+
+    <span class="c">// 2. POST to Python engine</span>
+    <span class="k">const</span> res = await fetch(process.env.PYTHON_ENGINE_URL + <span class="s">'/align'</span>, {
+      method: <span class="s">'POST'</span>,
+      headers: { <span class="s">'Content-Type'</span>: <span class="s">'application/json'</span> },
+      body: JSON.stringify({
+        audio_url:  signedUrl,
+        lyrics:     input.lyrics,
+        eq_profile: input.eqProfile
+      })
+    });
+
+    <span class="k">const</span> { word_scores, cleaned_path } = await res.json();
+
+    <span class="c">// 3. Batch write word scores to Firestore subcollection</span>
+    <span class="k">const</span> db = getFirestore();
+    <span class="k">const</span> batch = db.batch();
+
+    for (<span class="k">const</span> [wordId, data] of Object.entries(word_scores)) {
+      <span class="k">const</span> ref = db
+        .collection(<span class="s">'projects'</span>).doc(input.projectId)
+        .collection(<span class="s">'sessions'</span>).doc(input.sessionId)
+        .collection(<span class="s">'words'</span>).doc(wordId);
+      batch.set(ref, { ...data, updatedAt: new Date() });
+    }
+    await batch.commit();
+
+    <span class="c">// 4. Update project status</span>
+    await db.collection(<span class="s">'projects'</span>).doc(input.projectId).update({
+      cleanedPath: cleaned_path,
+      status: <span class="s">'complete'</span>,
+      updatedAt: new Date()
+    });
+
+    return { success: true, wordCount: Object.keys(word_scores).length };
+  }
+);</code>
+  </div>
+
+  <div class="code-block blue" data-lang="flows/repairFlow.js">
+<code><span class="k">export const</span> repairFlow = defineFlow(
+  {
+    name: <span class="s">'repairFlow'</span>,
+    inputSchema: z.object({
+      projectId:  z.string(),
+      sessionId:  z.string(),
+      wordId:     z.string(),   <span class="c">// "w_1_2_3"</span>
+      word:       z.string(),   <span class="c">// "devotion"</span>
+      timestamp:  z.number(),   <span class="c">// seconds into audio</span>
+      stemPath:   z.string()
+    })
+  },
+  async (input) =&gt; {
+
+    <span class="c">// POST single word to Python /repair</span>
+    <span class="k">const</span> res = await fetch(process.env.PYTHON_ENGINE_URL + <span class="s">'/repair'</span>, {
+      method: <span class="s">'POST'</span>,
+      headers: { <span class="s">'Content-Type'</span>: <span class="s">'application/json'</span> },
+      body: JSON.stringify(input)
+    });
+
+    <span class="k">const</span> { new_score, repaired_path } = await res.json();
+
+    <span class="c">// Update single word doc — one write, real-time on mobile</span>
+    await getFirestore()
+      .collection(<span class="s">'projects'</span>).doc(input.projectId)
+      .collection(<span class="s">'sessions'</span>).doc(input.sessionId)
+      .collection(<span class="s">'words'</span>).doc(input.wordId)
+      .update({
+        status: <span class="s">'fixed'</span>,
+        score: new_score,
+        repairApplied: true,
+        updatedAt: new Date()
+      });
+
+    return { repaired_path, new_score };
+  }
+);</code>
+  </div>
+</div>
+
+<!-- CLOUD FUNCTIONS -->
+<div class="doc-section">
+  <div class="section-label">Cloud Functions</div>
+  <div class="section-title">Callable <span class="purple">Functions</span></div>
+  <p class="prose">Two callable functions the client hits directly. They wrap the Genkit flows and enforce Firebase Auth so only the project owner can trigger analysis or repair.</p>
+
+  <div class="code-block purple" data-lang="functions/index.js">
+<code><span class="k">import</span> { onCall, HttpsError } from <span class="s">'firebase-functions/v2/https'</span>;
+<span class="k">import</span> { runFlow } from <span class="s">'@genkit-ai/flow'</span>;
+<span class="k">import</span> { alignFlow } from <span class="s">'./flows/alignFlow.js'</span>;
+<span class="k">import</span> { repairFlow } from <span class="s">'./flows/repairFlow.js'</span>;
+<span class="k">import</span> { getFirestore } from <span class="s">'firebase-admin/firestore'</span>;
+
+<span class="c">// ── Analyze stem ─────────────────────────────────────────</span>
+<span class="k">export const</span> analyzeStem = onCall(
+  { region: <span class="s">'us-central1'</span>, timeoutSeconds: <span class="num">300</span> },
+  async (request) =&gt; {
+
+    <span class="c">// Auth gate</span>
+    if (!request.auth)
+      throw new HttpsError(<span class="s">'unauthenticated'</span>, <span class="s">'Sign in required'</span>);
+
+    <span class="c">// Ownership check</span>
+    <span class="k">const</span> project = await getFirestore()
+      .collection(<span class="s">'projects'</span>).doc(request.data.projectId).get();
+
+    if (project.data().userId !== request.auth.uid)
+      throw new HttpsError(<span class="s">'permission-denied'</span>, <span class="s">'Not your project'</span>);
+
+    <span class="c">// Mark analyzing — client listens via onSnapshot</span>
+    await project.ref.update({ status: <span class="s">'analyzing'</span> });
+
+    return runFlow(alignFlow, request.data);
+  }
+);
+
+<span class="c">// ── Repair single word ───────────────────────────────────</span>
+<span class="k">export const</span> repairWord = onCall(
+  { region: <span class="s">'us-central1'</span>, timeoutSeconds: <span class="num">120</span> },
+  async (request) =&gt; {
+    if (!request.auth)
+      throw new HttpsError(<span class="s">'unauthenticated'</span>, <span class="s">'Sign in required'</span>);
+    return runFlow(repairFlow, request.data);
+  }
+);</code>
+  </div>
+
+  <div class="callout purple">
+    <span class="callout-label">Timeout Note</span>
+    <p>WhisperX alignment on a 3-minute stem takes 15–60 seconds depending on compute. Cloud Functions v2 supports up to 60 minutes — <strong>timeoutSeconds: 300</strong> is safe. The client listens to the Firestore project document for <em>analyzing → complete</em> rather than waiting on the HTTP response.</p>
+  </div>
+</div>
+
+<!-- CLIENT CALL PATTERN -->
+<div class="doc-section">
+  <div class="section-label">Client Side</div>
+  <div class="section-title">How the <span class="gold">UI Calls It</span></div>
+  <p class="prose">Upload WAV → call function → listen to Firestore. Word map updates live as scores stream in. No polling, no reload. Works on mobile over LTE.</p>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-num"><div class="flow-circle">1</div></div>
+      <div class="flow-body">
+        <div class="flow-title">Upload WAV to Cloud Storage</div>
+        <div class="flow-tech">uploadBytesResumable() · progress bar on mobile</div>
+        <div class="flow-desc">WAV never passes through the Cloud Function. Python reads it directly via signed URL. Upload path stored in the Firestore project doc.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num"><div class="flow-circle">2</div></div>
+      <div class="flow-body">
+        <div class="flow-title">Call analyzeStem</div>
+        <div class="flow-tech">httpsCallable() · returns immediately</div>
+        <div class="flow-desc">Client sends projectId, sessionId, lyrics JSON, EQ profile. Function kicks off and returns — client doesn't block waiting.</div>
+        <div class="code-block white" data-lang="client" style="margin-top:.8rem">
+<code><span class="k">const</span> analyze = httpsCallable(functions, <span class="s">'analyzeStem'</span>);
+await analyze({
+  projectId, sessionId,
+  stemPath: uploadedPath,
+  lyrics: LYRIC_DATA,
+  eqProfile: { sub: -<span class="num">3</span>, mud: -<span class="num">4</span>, presence: <span class="num">3</span>, air: <span class="num">1</span> }
+});</code>
+        </div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num"><div class="flow-circle">3</div></div>
+      <div class="flow-body">
+        <div class="flow-title">Listen to Firestore in Real Time</div>
+        <div class="flow-tech">onSnapshot() · words subcollection</div>
+        <div class="flow-desc">Client subscribes to the words subcollection. As Python returns scores and the flow writes them, word chips <strong>flip live on mobile</strong> — grey to green / gold / red as they resolve.</div>
+        <div class="code-block green" data-lang="client" style="margin-top:.8rem">
+<code><span class="k">const</span> wordsRef = db
+  .collection(`projects/${projectId}/sessions/${sessionId}/words`);
+
+onSnapshot(wordsRef, (snapshot) =&gt; {
+  snapshot.docChanges().forEach(change =&gt; {
+    if (change.type === <span class="s">'added'</span> || change.type === <span class="s">'modified'</span>) {
+      <span class="k">const</span> { word, score, status } = change.doc.data();
+      updateWordChip(change.doc.id, score, status);
+    }
+  });
+});</code>
+        </div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num"><div class="flow-circle">4</div></div>
+      <div class="flow-body">
+        <div class="flow-title">Approvals Write Directly to Firestore</div>
+        <div class="flow-tech">setDoc() · No Cloud Function needed</div>
+        <div class="flow-desc">Tap <strong>Approve</strong> or <strong>Flag</strong> on a word — client writes directly to that word's doc. Instant, gated by security rules. Persists across every mobile session forever.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num"><div class="flow-circle">5</div></div>
+      <div class="flow-body">
+        <div class="flow-title">TTS Repair Calls repairWord</div>
+        <div class="flow-tech">httpsCallable() · single word · Python /repair endpoint</div>
+        <div class="flow-desc">Only fires when you tap <strong>Apply TTS Blend</strong>. Returns new score. Firestore word doc updates, chip flips green with ✓. Repaired segment written back to Storage.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECURITY RULES -->
+<div class="doc-section">
+  <div class="section-label">Security</div>
+  <div class="section-title">Firestore <span class="red">Rules</span></div>
+  <p class="prose">Users read and write only their own projects. The ownership check cascades through sessions and words via a document get.</p>
+
+  <div class="code-block" data-lang="firestore.rules">
+<code>rules_version = <span class="s">'2'</span>;
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    match /projects/{projectId} {
+      allow read, write: if request.auth != null
+        &amp;&amp; resource.data.userId == request.auth.uid;
+
+      match /sessions/{sessionId} {
+        allow read, write: if request.auth != null
+          &amp;&amp; get(/databases/$(database)/documents/projects/$(projectId))
+             .data.userId == request.auth.uid;
+
+        match /words/{wordId} {
+          allow read, write: if request.auth != null
+            &amp;&amp; get(/databases/$(database)/documents/projects/$(projectId))
+               .data.userId == request.auth.uid;
+        }
+      }
+    }
+  }
+}</code>
+  </div>
+
+  <div class="callout red">
+    <span class="callout-label">Python Engine Security</span>
+    <p>The Python engine URL lives in a <strong>Cloud Function environment variable</strong> — never in client code. Client never calls Python directly. Only the Cloud Function forwards to it, after enforcing auth. Set <code>PYTHON_ENGINE_URL</code> in Functions config and keep it out of the repo.</p>
+  </div>
+</div>
+
+<div class="doc-footer">
+  <div>VOCAL SURGEON · FIREBASE ARCHITECTURE · <span>buildwhilebleeding.com</span></div>
+  <div>FIRESTORE · GENKIT · CLOUD FUNCTIONS · STORAGE</div>
+</div>
+
+</div>
+</body>
+</html>

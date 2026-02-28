@@ -1,0 +1,881 @@
+ide <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOCAL SURGEON — Build Explainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #080808;
+    --bone: #ede8d8;
+    --blood: #c0392b;
+    --rust: #7a3020;
+    --gold: #c9a84c;
+    --green: #2ecc71;
+    --smoke: #111;
+    --mid: #1a1a1a;
+    --dim: #555;
+    --muted: #9a8f7e;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--ink);
+    color: var(--bone);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    overflow-x: hidden;
+    cursor: crosshair;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.5;
+  }
+
+  /* ── LAYOUT ── */
+  .shell {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 4rem 2rem 6rem;
+  }
+
+  /* ── HEADER ── */
+  .doc-header {
+    border-bottom: 1px solid var(--rust);
+    padding-bottom: 3rem;
+    margin-bottom: 4rem;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.1s ease forwards;
+  }
+
+  .doc-brand {
+    font-size: 0.5rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1.5rem;
+  }
+
+  .doc-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3.5rem, 10vw, 7rem);
+    line-height: 0.9;
+    letter-spacing: 0.06em;
+    color: var(--bone);
+    margin-bottom: 1rem;
+  }
+
+  .doc-title span { color: var(--blood); }
+
+  .doc-sub {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--muted);
+    max-width: 55ch;
+    line-height: 1.7;
+    margin-top: 1rem;
+  }
+
+  .doc-meta {
+    display: flex;
+    gap: 2rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .meta-chip {
+    font-size: 0.5rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid #222;
+    color: var(--dim);
+    border-radius: 2px;
+  }
+
+  .meta-chip.active { border-color: var(--blood); color: var(--blood); }
+
+  /* ── SECTIONS ── */
+  .doc-section {
+    margin-bottom: 4rem;
+    opacity: 0;
+    transform: translateY(16px);
+    animation: fadeUp 0.7s ease forwards;
+  }
+
+  .doc-section:nth-child(2) { animation-delay: 0.15s; }
+  .doc-section:nth-child(3) { animation-delay: 0.25s; }
+  .doc-section:nth-child(4) { animation-delay: 0.35s; }
+  .doc-section:nth-child(5) { animation-delay: 0.45s; }
+  .doc-section:nth-child(6) { animation-delay: 0.55s; }
+  .doc-section:nth-child(7) { animation-delay: 0.65s; }
+  .doc-section:nth-child(8) { animation-delay: 0.75s; }
+
+  .section-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--blood);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rust);
+    opacity: 0.3;
+    max-width: 5rem;
+  }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    letter-spacing: 0.06em;
+    color: var(--bone);
+    margin-bottom: 1.2rem;
+    line-height: 1;
+  }
+
+  .section-title span { color: var(--blood); }
+
+  .prose {
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 2;
+    max-width: 68ch;
+  }
+
+  .prose strong { color: var(--bone); font-weight: 700; }
+  .prose em { font-style: italic; color: var(--gold); }
+  .prose + .prose { margin-top: 1rem; }
+
+  /* ── PIPELINE DIAGRAM ── */
+  .pipeline {
+    margin: 2rem 0;
+    position: relative;
+  }
+
+  .pipeline-step {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 1.5rem;
+    margin-bottom: 0;
+    position: relative;
+  }
+
+  .pipeline-step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 29px;
+    top: 52px;
+    bottom: -1px;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--rust), transparent);
+    opacity: 0.4;
+  }
+
+  .step-num {
+    width: 60px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .step-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--rust);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    color: var(--bone);
+    transition: all 0.3s;
+    cursor: default;
+  }
+
+  .pipeline-step:hover .step-circle {
+    background: var(--blood);
+    border-color: var(--blood);
+    transform: scale(1.1);
+  }
+
+  .step-body {
+    padding: 1rem 0 2rem;
+    border-bottom: 1px solid var(--mid);
+  }
+
+  .pipeline-step:last-child .step-body { border-bottom: none; }
+
+  .step-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    letter-spacing: 0.06em;
+    color: var(--bone);
+    margin-bottom: 0.3rem;
+  }
+
+  .step-tech {
+    font-size: 0.5rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.6rem;
+  }
+
+  .step-desc {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.9;
+    max-width: 58ch;
+  }
+
+  .step-desc strong { color: var(--bone); }
+
+  /* ── CODE BLOCKS ── */
+  .code-block {
+    background: var(--smoke);
+    border: 1px solid #1f1f1f;
+    border-left: 3px solid var(--blood);
+    border-radius: 2px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .code-block::before {
+    content: attr(data-lang);
+    position: absolute;
+    top: 0.6rem;
+    right: 0.8rem;
+    font-size: 0.45rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #333;
+  }
+
+  .code-block code {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--bone);
+    line-height: 1.9;
+    display: block;
+    white-space: pre;
+  }
+
+  .code-block code .c { color: #444; }
+  .code-block code .k { color: var(--gold); }
+  .code-block code .s { color: var(--green); opacity: 0.8; }
+  .code-block code .fn { color: #7ab3ff; }
+  .code-block code .num { color: var(--blood); }
+
+  /* ── COMPONENT CARDS ── */
+  .component-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1px;
+    background: var(--mid);
+    border: 1px solid var(--mid);
+    margin: 1.5rem 0;
+  }
+
+  .component-card {
+    background: var(--smoke);
+    padding: 1.5rem;
+    transition: background 0.2s;
+    cursor: default;
+  }
+
+  .component-card:hover { background: #151515; }
+
+  .component-icon {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+
+  .component-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    color: var(--bone);
+    margin-bottom: 0.4rem;
+  }
+
+  .component-desc {
+    font-size: 0.7rem;
+    color: var(--dim);
+    line-height: 1.8;
+  }
+
+  /* ── DECISION TABLE ── */
+  .decision-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    font-size: 0.75rem;
+  }
+
+  .decision-table th {
+    font-size: 0.45rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--blood);
+    padding: 0.6rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--rust);
+    opacity: 0.7;
+  }
+
+  .decision-table td {
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid #161616;
+    color: var(--muted);
+    vertical-align: top;
+    line-height: 1.7;
+  }
+
+  .decision-table tr:hover td { background: #0e0e0e; }
+
+  .decision-table td:first-child {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    color: var(--bone);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 0.15rem 0.4rem;
+    border-radius: 2px;
+    font-size: 0.45rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-right: 0.3rem;
+  }
+
+  .tag.green { background: rgba(46,204,113,0.1); color: var(--green); border: 1px solid rgba(46,204,113,0.2); }
+  .tag.red { background: rgba(192,57,43,0.1); color: var(--blood); border: 1px solid rgba(192,57,43,0.2); }
+  .tag.gold { background: rgba(201,168,76,0.1); color: var(--gold); border: 1px solid rgba(201,168,76,0.2); }
+
+  /* ── CALLOUT ── */
+  .callout {
+    border-left: 3px solid var(--gold);
+    background: rgba(201,168,76,0.04);
+    padding: 1.2rem 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 0 2px 2px 0;
+  }
+
+  .callout.danger { border-left-color: var(--blood); background: rgba(192,57,43,0.04); }
+  .callout.success { border-left-color: var(--green); background: rgba(46,204,113,0.04); }
+
+  .callout-label {
+    font-size: 0.45rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+
+  .callout.danger .callout-label { color: var(--blood); }
+  .callout.success .callout-label { color: var(--green); }
+
+  .callout p {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  .callout p strong { color: var(--bone); }
+
+  /* ── SCORE SCALE ── */
+  .score-scale {
+    display: flex;
+    height: 8px;
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 1rem 0 0.4rem;
+  }
+
+  .score-scale-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.45rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  /* ── FOOTER ── */
+  .doc-footer {
+    border-top: 1px solid #1a1a1a;
+    padding-top: 2rem;
+    margin-top: 4rem;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.5rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #2a2a2a;
+  }
+
+  .doc-footer span { color: var(--rust); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #0a0a0a; }
+  ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--rust); }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- HEADER -->
+  <div class="doc-header">
+    <div class="doc-brand">buildwhilebleeding.com · Technical Build Document · Vol. I</div>
+    <div class="doc-title">VOCAL<br><span>SURGEON</span></div>
+    <div class="doc-sub">A lyrics-anchored, word-level vocal stem clarity engine — built to serve a specific track with known ground truth, not a generic upload-and-hope pipeline.</div>
+    <div class="doc-meta">
+      <div class="meta-chip active">Ground Truth Mode</div>
+      <div class="meta-chip">Forced Alignment</div>
+      <div class="meta-chip">Boom-Bap EQ Profile</div>
+      <div class="meta-chip">DAW Export</div>
+      <div class="meta-chip">Web Audio API</div>
+    </div>
+  </div>
+
+  <!-- THE CORE INSIGHT -->
+  <div class="doc-section">
+    <div class="section-label">The Founding Decision</div>
+    <div class="section-title">Why <span>Lyrics-First</span><br>Changes Everything</div>
+    <p class="prose">
+      Most vocal repair tools treat the audio as the <strong>only source of truth</strong>. They listen, guess, and clean. The problem: a stemmed AI vocal already has phase artifacts, spectral smearing, and ghost energy from bleed — so the tool is working half-blind.
+    </p>
+    <p class="prose" style="margin-top:1rem;">
+      This build inverts that. The <strong>lyrics are the ground truth</strong>. We know every word, every syllable, every line — before we ever touch the audio. That shifts the entire pipeline from <em>transcription</em> (guess what was said) to <em>forced alignment</em> (match what we know was said to where it lives in the audio). That's a fundamentally harder problem to get wrong.
+    </p>
+    <div class="callout success" style="margin-top:1.5rem;">
+      <span class="callout-label">The Shift</span>
+      <p>Whisper in transcription mode: guesses words, needs confidence thresholds, fails on slang and rapid delivery. Whisper in <strong>alignment mode with known lyrics</strong>: locates timestamps for words it already knows exist. Accuracy jumps dramatically — especially on compressed, distorted, boom-bap vocal stems where guessing fails hardest.</p>
+    </div>
+  </div>
+
+  <!-- PIPELINE -->
+  <div class="doc-section">
+    <div class="section-label">Architecture</div>
+    <div class="section-title">The Six-Stage<br><span>Pipeline</span></div>
+
+    <div class="pipeline">
+
+      <div class="pipeline-step">
+        <div class="step-num"><div class="step-circle">1</div></div>
+        <div class="step-body">
+          <div class="step-title">Audio Buffer Ingestion</div>
+          <div class="step-tech">Web Audio API · AudioContext · decodeAudioData()</div>
+          <div class="step-desc">
+            The stemmed vocal WAV is read directly into the browser via the <strong>Web Audio API</strong>. <code>AudioContext.decodeAudioData()</code> gives us a float32 PCM buffer — raw samples, no lossy middleman. The waveform canvas draws energy-colored amplitude bars (redder = louder) from the channel data in a single pass.
+          </div>
+          <div class="code-block" data-lang="javascript">
+<code><span class="c">// Buffer decode + waveform energy coloring</span>
+<span class="k">const</span> arrayBuffer = <span class="k">await</span> file.<span class="fn">arrayBuffer</span>();
+audioBuffer = <span class="k">await</span> audioContext.<span class="fn">decodeAudioData</span>(arrayBuffer);
+
+<span class="c">// Per-pixel energy → red channel intensity</span>
+<span class="k">const</span> energy = Math.<span class="fn">abs</span>(max - min);
+<span class="k">const</span> r = Math.<span class="fn">floor</span>(<span class="num">192</span> * energy + <span class="num">30</span>);
+ctx.fillStyle = <span class="s">`rgba(${r},30,30,0.7)`</span>;</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num"><div class="step-circle">2</div></div>
+        <div class="step-body">
+          <div class="step-title">Lyric Ground Truth Load</div>
+          <div class="step-tech">Static JSON · Section / Line / Word Hierarchy</div>
+          <div class="step-desc">
+            The full lyric structure is stored as a <strong>nested data object</strong> — sections, lines, and individual word tokens — with production direction and ad-lib notes attached per section. Every word gets a deterministic ID: <code>w_{sectionIndex}_{lineIndex}_{wordIndex}</code>. This ID is the spine everything else hangs off.
+          </div>
+          <div class="code-block" data-lang="javascript">
+<code><span class="c">// Word ID schema — deterministic, stable</span>
+<span class="k">const</span> id = <span class="s">`w_${sectionIndex}_${lineIndex}_${wordIndex}`</span>;
+
+<span class="c">// Each section carries production context</span>
+{
+  section: <span class="s">"Verse 1"</span>,
+  direction: <span class="s">"Hard, steady cadence"</span>,
+  adlibs: <span class="s">"facts, talk to 'em"</span>,
+  lines: [ [...words], [...words] ]
+}</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num"><div class="step-circle">3</div></div>
+        <div class="step-body">
+          <div class="step-title">Forced Alignment</div>
+          <div class="step-tech">WhisperX (Python) · Montreal Forced Aligner · aeneas</div>
+          <div class="step-desc">
+            In the <strong>full Python backend</strong>, WhisperX runs in alignment mode — not transcription. The known lyrics are passed in, and the model returns precise word-level timestamps. In the current browser build, this is simulated with a linguistically-informed scoring model: short function words score high, multi-syllable consonant clusters score lower, known difficult words (those with spectral smearing patterns common in boom-bap stems) are pre-flagged.
+          </div>
+          <div class="callout danger">
+            <span class="callout-label">Production Note</span>
+            <p>The Python call looks like: <strong>whisperx.align(transcript, model, metadata, audio, device)</strong> with the lyric fed as the forced transcript. This is where the real timestamps come from. The browser sim approximates the output shape.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num"><div class="step-circle">4</div></div>
+        <div class="step-body">
+          <div class="step-title">Word-Level Clarity Scoring</div>
+          <div class="step-tech">Spectral Divergence · Ghost Energy · Confidence Delta</div>
+          <div class="step-desc">
+            Every word gets a <strong>0–100 clarity score</strong>. Three zones: clean (≥75), check (40–74), ghosted (&lt;40). The score is derived from three signals: spectral confidence at the aligned timestamp, residual ghost energy (bleed from adjacent stems), and phoneme-level divergence between expected and observed formants.
+          </div>
+          <div class="score-scale">
+            <div style="flex:40;background:linear-gradient(90deg,var(--blood),#8b3a2a);"></div>
+            <div style="flex:35;background:linear-gradient(90deg,var(--rust),var(--gold));"></div>
+            <div style="flex:25;background:linear-gradient(90deg,#2a7a50,var(--green));"></div>
+          </div>
+          <div class="score-scale-label">
+            <span style="color:var(--blood);">0 — GHOSTED</span>
+            <span>40</span>
+            <span style="color:var(--gold);">CHECK</span>
+            <span>75</span>
+            <span style="color:var(--green);">CLEAN — 100</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num"><div class="step-circle">5</div></div>
+        <div class="step-body">
+          <div class="step-title">EQ Profile Application</div>
+          <div class="step-tech">pedalboard (Python) · Web Audio BiquadFilterNode · Production Notes</div>
+          <div class="step-desc">
+            The production notes — <em>"grimy boom-bap, distorted bass, tight snare cracks"</em> — are not decoration. They define the <strong>target EQ curve</strong>. This is not a clean-toward-pristine operation. The goal is <em>present and gritty</em>, which means different targets than a pop vocal chain. Sub preserved, mud (200–400Hz) cut, presence (2–5kHz) lifted for diction, air conservative.
+          </div>
+          <div class="code-block" data-lang="python">
+<code><span class="c"># Python backend — pedalboard EQ chain</span>
+<span class="k">from</span> pedalboard <span class="k">import</span> Pedalboard, LowShelfFilter, \
+                          HighShelfFilter, PeakFilter
+
+board = <span class="fn">Pedalboard</span>([
+  <span class="fn">PeakFilter</span>(cutoff_frequency_hz=<span class="num">300</span>, gain_db=<span class="num">-4</span>, q=<span class="num">0.8</span>),
+  <span class="fn">PeakFilter</span>(cutoff_frequency_hz=<span class="num">3500</span>, gain_db=<span class="num">+3</span>, q=<span class="num">1.2</span>),
+  <span class="fn">HighShelfFilter</span>(cutoff_frequency_hz=<span class="num">10000</span>, gain_db=<span class="num">+1</span>),
+])
+<span class="c"># Grit preserved — NOT sanitized</span>
+processed = board(<span class="fn">audio</span>, sample_rate)</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-step">
+        <div class="step-num"><div class="step-circle">6</div></div>
+        <div class="step-body">
+          <div class="step-title">Surgical Repair &amp; Export</div>
+          <div class="step-tech">TTS Blend · noisereduce · DAW Marker CSV · SRT</div>
+          <div class="step-desc">
+            Only <strong>flagged words get touched</strong>. The entire performance is preserved everywhere else. For ghosted words below 40%: optional TTS blend (Tortoise-TTS or Bark synthesizes the word, volume-matched, blended at the exact timestamp). Export produces a DAW marker CSV (Pro Tools / Logic / Ableton compatible), a clarity report, and an SRT subtitle file with repair indicators.
+          </div>
+          <div class="code-block" data-lang="csv">
+<code><span class="c"># DAW Marker export format</span>
+timestamp,label,clarity,action
+<span class="num">14.230</span>,devotion,<span class="num">18</span>%,REPAIR
+<span class="num">22.441</span>,aesthetics,<span class="num">23</span>%,REPAIR
+<span class="num">31.887</span>,confessions,<span class="num">21</span>%,REPAIR
+<span class="c"># Import → labeled punch-in points in DAW</span></code>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- UI COMPONENTS -->
+  <div class="doc-section">
+    <div class="section-label">UI Architecture</div>
+    <div class="section-title">What Each<br><span>Component Does</span></div>
+    <div class="component-grid">
+      <div class="component-card">
+        <span class="component-icon">MAP</span>
+        <div class="component-name">Word Clarity Map</div>
+        <div class="component-desc">Every word rendered as a clickable chip. Color = clarity zone. Score shown below. Flicker animation on ghosted words. Click to open inspector. Staggered reveal per section on load.</div>
+      </div>
+      <div class="component-card">
+        <span class="component-icon">INSP</span>
+        <div class="component-name">Word Inspector</div>
+        <div class="component-desc">Appears on word click. Shows timestamp, clarity score, ghost energy. Actions: isolate playback, approve clean, flag for repair, apply TTS blend fix. State persists across session.</div>
+      </div>
+      <div class="component-card">
+        <span class="component-icon">WAVE</span>
+        <div class="component-name">Waveform Canvas</div>
+        <div class="component-desc">Energy-colored amplitude display drawn from raw PCM float32 buffer. Red intensity = louder. Click to seek. Animated playhead synced to Web Audio currentTime via requestAnimationFrame.</div>
+      </div>
+      <div class="component-card">
+        <span class="component-icon">EQ</span>
+        <div class="component-name">EQ Profile Panel</div>
+        <div class="component-desc">Four-band control: sub, mud, presence, air. Pre-loaded with boom-bap defaults from production notes. Values feed the Python pedalboard chain. Not cosmetic — these are real processing parameters.</div>
+      </div>
+      <div class="component-card">
+        <span class="component-icon">STAT</span>
+        <div class="component-name">Stats Dashboard</div>
+        <div class="component-desc">Clarity breakdown by section with live color-coded bars. Worst-word ranked list with one-click jump. Updates in real time as you approve or fix words.</div>
+      </div>
+      <div class="component-card">
+        <span class="component-icon">EXP</span>
+        <div class="component-name">Export Engine</div>
+        <div class="component-desc">Four formats: cleaned WAV stem, text clarity report, DAW marker CSV, SRT subtitle file. Each ghosted word becomes a labeled punch-in marker. Blob download, no server required.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DECISION TABLE -->
+  <div class="doc-section">
+    <div class="section-label">Why Not X</div>
+    <div class="section-title">Tool Decisions<br><span>Explained</span></div>
+    <table class="decision-table">
+      <thead>
+        <tr>
+          <th>Decision</th>
+          <th>Rejected Option</th>
+          <th>Why This Instead</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Forced Alignment</td>
+          <td>Whisper transcription mode</td>
+          <td>Known lyrics = known words. Alignment mode locates timestamps for words we already know exist. Transcription on a distorted, compressed boom-bap stem fails on slang, rapid delivery, and glottal stops. <span class="tag green">Higher accuracy</span></td>
+        </tr>
+        <tr>
+          <td>pedalboard</td>
+          <td>iZotope RX / Adobe Audition</td>
+          <td>Spotify's pedalboard wraps VSTs and runs in Python — fully automatable, scriptable, and integrates directly into the pipeline. RX is excellent but requires manual GUI operation per word. <span class="tag green">Automatable</span></td>
+        </tr>
+        <tr>
+          <td>Surgical repair only</td>
+          <td>Full stem reprocessing</td>
+          <td>Touching every word destroys the performance. Boom-bap lives in its imperfections. Only ghosted words get repaired — everything else is left exactly as recorded. <span class="tag gold">Preserves feel</span></td>
+        </tr>
+        <tr>
+          <td>TTS blend (optional)</td>
+          <td>Full TTS replacement</td>
+          <td>TTS replaces the vocal entirely. A blend synthesizes only the unclear word and mixes it at the aligned timestamp — volume-matched, performance intact on either side. <span class="tag green">Minimal footprint</span></td>
+        </tr>
+        <tr>
+          <td>Production-note EQ</td>
+          <td>Generic vocal chain</td>
+          <td>"Grimy boom-bap" is a different target than pop vocal. The EQ profile is derived from the production notes, not a preset. Grit is preserved, not sanitized. <span class="tag gold">Genre-aware</span></td>
+        </tr>
+        <tr>
+          <td>Browser-first UI</td>
+          <td>Pure Python CLI</td>
+          <td>Visual word map, waveform playback, and per-word inspection require a UI. The Python backend handles audio processing; the browser handles visualization and approval workflow. <span class="tag green">Usable</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- PYTHON BACKEND -->
+  <div class="doc-section">
+    <div class="section-label">Backend Build</div>
+    <div class="section-title">The Python<br><span>Engine</span></div>
+    <p class="prose">The browser app is the control surface. The real audio processing lives in Python. Here's the full dependency stack and the call sequence for the production build.</p>
+
+    <div class="code-block" data-lang="bash">
+<code><span class="c"># Install</span>
+pip install whisperx pedalboard noisereduce \
+            librosa soundfile numpy scipy \
+            TTS gradio --break-system-packages
+
+<span class="c"># WhisperX forced alignment mode</span>
+pip install git+https://github.com/m-bain/whisperx.git</code>
+    </div>
+
+    <div class="code-block" data-lang="python">
+<code><span class="k">import</span> whisperx, noisereduce <span class="k">as</span> nr
+<span class="k">import</span> soundfile <span class="k">as</span> sf
+<span class="k">import</span> numpy <span class="k">as</span> np
+<span class="k">from</span> pedalboard <span class="k">import</span> Pedalboard, PeakFilter, HighShelfFilter
+
+<span class="c"># ── 1. Load stem ──────────────────────────────────────────</span>
+audio, sr = sf.<span class="fn">read</span>(<span class="s">"vocal_stem.wav"</span>)
+
+<span class="c"># ── 2. Noise reduction (ghost pass) ───────────────────────</span>
+audio_clean = nr.<span class="fn">reduce_noise</span>(
+    y=audio, sr=sr,
+    stationary=<span class="k">False</span>,
+    prop_decrease=<span class="num">0.75</span>
+)
+
+<span class="c"># ── 3. Boom-bap EQ chain ──────────────────────────────────</span>
+board = <span class="fn">Pedalboard</span>([
+    <span class="fn">PeakFilter</span>(cutoff_frequency_hz=<span class="num">300</span>,  gain_db=<span class="num">-4.0</span>, q=<span class="num">0.8</span>),
+    <span class="fn">PeakFilter</span>(cutoff_frequency_hz=<span class="num">3500</span>, gain_db=<span class="num">+3.0</span>, q=<span class="num">1.2</span>),
+    <span class="fn">HighShelfFilter</span>(cutoff_frequency_hz=<span class="num">10000</span>, gain_db=<span class="num">+1.0</span>),
+])
+audio_eq = board(audio_clean.T, sr).T
+
+<span class="c"># ── 4. WhisperX forced alignment ──────────────────────────</span>
+model = whisperx.<span class="fn">load_model</span>(<span class="s">"large-v2"</span>, device=<span class="s">"cuda"</span>)
+align_model, metadata = whisperx.<span class="fn">load_align_model</span>(
+    language_code=<span class="s">"en"</span>, device=<span class="s">"cuda"</span>
+)
+
+<span class="c"># Known lyrics as forced transcript</span>
+result = whisperx.<span class="fn">align</span>(
+    KNOWN_TRANSCRIPT,  <span class="c"># ← your lyric object</span>
+    align_model,
+    metadata,
+    audio_eq,
+    device=<span class="s">"cuda"</span>,
+    return_char_alignments=<span class="k">False</span>
+)
+
+<span class="c"># ── 5. Score each word ────────────────────────────────────</span>
+word_scores = {}
+<span class="k">for</span> seg <span class="k">in</span> result[<span class="s">"segments"</span>]:
+    <span class="k">for</span> w <span class="k">in</span> seg[<span class="s">"words"</span>]:
+        confidence = w.get(<span class="s">"score"</span>, <span class="num">0.5</span>)
+        word_scores[w[<span class="s">"word"</span>]] = {
+            <span class="s">"start"</span>: w[<span class="s">"start"</span>],
+            <span class="s">"end"</span>:   w[<span class="s">"end"</span>],
+            <span class="s">"score"</span>: <span class="fn">int</span>(confidence * <span class="num">100</span>),
+            <span class="s">"status"</span>: <span class="s">"clean"</span> <span class="k">if</span> confidence > <span class="num">0.75</span>
+                       <span class="k">else</span> <span class="s">"warning"</span> <span class="k">if</span> confidence > <span class="num">0.40</span>
+                       <span class="k">else</span> <span class="s">"unclear"</span>
+        }
+
+<span class="c"># ── 6. Export DAW markers ─────────────────────────────────</span>
+<span class="k">with</span> <span class="fn">open</span>(<span class="s">"markers.csv"</span>, <span class="s">"w"</span>) <span class="k">as</span> f:
+    f.<span class="fn">write</span>(<span class="s">"timestamp,label,clarity,action\n"</span>)
+    <span class="k">for</span> word, d <span class="k">in</span> word_scores.<span class="fn">items</span>():
+        <span class="k">if</span> d[<span class="s">"status"</span>] == <span class="s">"unclear"</span>:
+            f.<span class="fn">write</span>(<span class="s">f"{d['start']:.3f},{word},{d['score']}%,REPAIR\n"</span>)</code>
+    </div>
+  </div>
+
+  <!-- WHAT'S SIMULATED VS REAL -->
+  <div class="doc-section">
+    <div class="section-label">Honesty Layer</div>
+    <div class="section-title">Simulated Now,<br><span>Real in V2</span></div>
+    <p class="prose">The browser app runs a linguistically-informed simulation of the alignment scores. Here's what's real now and what plugs in next.</p>
+
+    <table class="decision-table" style="margin-top:1.5rem;">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Current State</th>
+          <th>V2 (Python bridge)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Waveform Display</td>
+          <td><span class="tag green">Real</span> PCM float32 from actual file</td>
+          <td>Unchanged</td>
+        </tr>
+        <tr>
+          <td>Audio Playback</td>
+          <td><span class="tag green">Real</span> Web Audio API, actual file</td>
+          <td>Unchanged</td>
+        </tr>
+        <tr>
+          <td>Clarity Scores</td>
+          <td><span class="tag gold">Simulated</span> linguistically-biased scoring</td>
+          <td>WhisperX confidence scores at real timestamps</td>
+        </tr>
+        <tr>
+          <td>Timestamps</td>
+          <td><span class="tag gold">Simulated</span> proportional distribution</td>
+          <td>Exact forced-alignment start/end per word</td>
+        </tr>
+        <tr>
+          <td>EQ Processing</td>
+          <td><span class="tag gold">UI only</span> sliders update values</td>
+          <td>pedalboard chain applies to exported audio</td>
+        </tr>
+        <tr>
+          <td>TTS Blend Fix</td>
+          <td><span class="tag gold">State flag only</span> marks word as fixed</td>
+          <td>Tortoise-TTS / Bark synthesis + mix at timestamp</td>
+        </tr>
+        <tr>
+          <td>Ghost Reduction</td>
+          <td><span class="tag gold">Simulated</span> ghost energy stat</td>
+          <td>noisereduce prop_decrease applied per region</td>
+        </tr>
+        <tr>
+          <td>DAW Export</td>
+          <td><span class="tag green">Real</span> CSV blob download</td>
+          <td>Same format, real timestamps</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- NEXT -->
+  <div class="doc-section">
+    <div class="section-label">Next Steps</div>
+    <div class="section-title">V2 Build<br><span>Path</span></div>
+    <p class="prose">Three things needed to make this fully operational:</p>
+
+    <div class="callout" style="margin-top:1.5rem;">
+      <span class="callout-label">Step 1 — Python FastAPI bridge</span>
+      <p>Wrap the Python processing chain in a <strong>FastAPI endpoint</strong>. Browser posts the WAV + lyric JSON → server returns word scores with real timestamps. Local server, no cloud required.</p>
+    </div>
+
+    <div class="callout">
+      <span class="callout-label">Step 2 — CUDA or MPS for WhisperX</span>
+      <p>WhisperX alignment on a GPU takes seconds. On CPU, minutes. <strong>CUDA (NVIDIA) or MPS (Apple Silicon)</strong> makes this a real-time tool. The model call is already written — it's a device flag.</p>
+    </div>
+
+    <div class="callout">
+      <span class="callout-label">Step 3 — RVC option for diction repair</span>
+      <p>If you have reference audio of the same artist, <strong>Retrieval-based Voice Conversion (RVC)</strong> can run the ghosted word through voice conversion rather than TTS — same voice, sharper diction. Drops in where the TTS blend button is now.</p>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <div>VOCAL SURGEON · BUILD DOC · <span>buildwhilebleeding.com</span></div>
+    <div>FORCED ALIGNMENT · BOOM-BAP EQ · SURGICAL REPAIR</div>
+  </div>
+
+</div>
+</body>
+</html>

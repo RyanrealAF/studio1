@@ -4,7 +4,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Scissors, Mic2, Activity, Settings2, FileText, LayoutDashboard, History } from "lucide-react";
+import { Scissors, Mic2, Activity, Settings2, FileText, LayoutDashboard, History, LogIn, LogOut } from "lucide-react";
+import { useUser, useAuth, initiateGoogleSignIn, initiateSignOut } from "@/firebase";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
   { group: "The Case", items: [
@@ -23,6 +26,16 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+
+  const handleLogin = () => {
+    initiateGoogleSignIn(auth);
+  };
+
+  const handleLogout = () => {
+    initiateSignOut(auth);
+  };
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-background/95 backdrop-blur-md border-r border-white/5 z-50 hidden lg:flex flex-col">
@@ -67,16 +80,45 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-8 border-t border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center">
-            <Mic2 className="w-4 h-4 text-primary" />
+      <div className="p-6 border-t border-white/5 space-y-4">
+        {isUserLoading ? (
+          <div className="flex items-center gap-3 animate-pulse">
+            <div className="w-8 h-8 rounded-full bg-white/5" />
+            <div className="h-2 w-20 bg-white/5 rounded" />
           </div>
-          <div>
-            <p className="text-[10px] font-bold text-foreground">SESSION_01</p>
-            <p className="text-[9px] text-muted-foreground">ACTIVE OPERATOR</p>
+        ) : user ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <Avatar className="w-8 h-8 border border-primary/40">
+                <AvatarImage src={user.photoURL || undefined} />
+                <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
+                  {user.displayName?.charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-foreground truncate">{user.displayName?.toUpperCase()}</p>
+                <p className="text-[9px] text-muted-foreground uppercase">OPERATOR</p>
+              </div>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleLogout}
+              className="w-full justify-start gap-3 px-2 text-[10px] tracking-widest text-muted-foreground hover:text-primary hover:bg-primary/5"
+            >
+              <LogOut className="w-3 h-3" /> LOG OUT
+            </Button>
           </div>
-        </div>
+        ) : (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleLogin}
+            className="w-full justify-center gap-3 border-primary/20 bg-primary/5 text-[10px] tracking-widest text-primary hover:bg-primary/10"
+          >
+            <LogIn className="w-3 h-3" /> OPERATOR LOGIN
+          </Button>
+        )}
       </div>
     </aside>
   );

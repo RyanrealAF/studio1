@@ -1,0 +1,1957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOCAL SURGEON — Stem Clarity Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #080808;
+    --bone: #ede8d8;
+    --blood: #c0392b;
+    --rust: #7a3020;
+    --gold: #c9a84c;
+    --green: #2ecc71;
+    --smoke: #161616;
+    --mid: #242424;
+    --dim: #555;
+    --muted: #9a8f7e;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--ink);
+    color: var(--bone);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    overflow-x: hidden;
+    min-height: 100vh;
+    cursor: crosshair;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.5;
+  }
+
+  /* TOPBAR */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid #1f1f1f;
+    position: sticky;
+    top: 0;
+    background: var(--ink);
+    z-index: 100;
+  }
+
+  .topbar-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    letter-spacing: 0.12em;
+    color: var(--bone);
+  }
+
+  .topbar-title span { color: var(--blood); }
+
+  .topbar-meta {
+    font-size: 0.55rem;
+    letter-spacing: 0.3em;
+    color: var(--dim);
+    text-align: right;
+    line-height: 2;
+    text-transform: uppercase;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid #222;
+    border-radius: 2px;
+    font-size: 0.55rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  .status-pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--dim);
+    transition: background 0.3s;
+  }
+
+  .status-pill.active .dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .status-pill.active { color: var(--green); border-color: var(--green); }
+  .status-pill.error .dot { background: var(--blood); }
+  .status-pill.error { color: var(--blood); border-color: var(--blood); }
+
+  /* LAYOUT */
+  .app {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    grid-template-rows: 1fr;
+    height: calc(100vh - 57px);
+  }
+
+  /* LEFT PANEL */
+  .panel-left {
+    border-right: 1px solid #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-section {
+    padding: 1.5rem;
+    border-bottom: 1px solid #1a1a1a;
+  }
+
+  .panel-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--blood);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .panel-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rust);
+    opacity: 0.4;
+  }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    border: 1px dashed #333;
+    border-radius: 2px;
+    padding: 2rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    background: var(--smoke);
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--gold);
+    background: #111;
+  }
+
+  .upload-zone.has-file {
+    border-color: var(--green);
+    border-style: solid;
+  }
+
+  .upload-icon {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.5rem;
+    color: #2a2a2a;
+    display: block;
+    margin-bottom: 0.5rem;
+    transition: color 0.3s;
+  }
+
+  .upload-zone:hover .upload-icon { color: var(--gold); }
+  .upload-zone.has-file .upload-icon { color: var(--green); }
+
+  .upload-zone p {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    text-transform: uppercase;
+    line-height: 1.8;
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  /* SONG SELECTOR */
+  .song-card {
+    background: var(--smoke);
+    border: 1px solid #1f1f1f;
+    border-radius: 2px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 0.5rem;
+  }
+
+  .song-card:hover { border-color: var(--gold); background: #111; }
+  .song-card.active { border-color: var(--blood); }
+
+  .song-card-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    color: var(--bone);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.3rem;
+  }
+
+  .song-card.active .song-card-title { color: var(--blood); }
+
+  .song-card-meta {
+    font-size: 0.5rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    text-transform: uppercase;
+  }
+
+  /* EQ PROFILE */
+  .eq-profile {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .eq-band {
+    background: var(--smoke);
+    border: 1px solid #1f1f1f;
+    padding: 0.8rem;
+    border-radius: 2px;
+  }
+
+  .eq-band-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.2em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+
+  .eq-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: #333;
+    outline: none;
+    border-radius: 1px;
+  }
+
+  .eq-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    background: var(--gold);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .eq-value {
+    font-size: 0.55rem;
+    color: var(--gold);
+    text-align: right;
+    display: block;
+    margin-top: 0.3rem;
+  }
+
+  /* PROCESS BTN */
+  .process-btn {
+    width: 100%;
+    padding: 1rem;
+    background: var(--blood);
+    color: var(--bone);
+    border: none;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .process-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+  }
+
+  .process-btn:hover::after { transform: translateX(100%); }
+  .process-btn:hover { background: #a93226; }
+  .process-btn:disabled { background: #2a2a2a; color: var(--dim); cursor: not-allowed; }
+
+  .process-btn.running {
+    background: #1f1f1f;
+    color: var(--gold);
+    animation: scanning 1.5s infinite;
+  }
+
+  @keyframes scanning {
+    0%, 100% { border-color: #333; }
+    50% { border-color: var(--gold); box-shadow: 0 0 12px rgba(201,168,76,0.2); }
+  }
+
+  /* RIGHT PANEL */
+  .panel-right {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid #1a1a1a;
+  }
+
+  .tab {
+    padding: 1rem 1.5rem;
+    font-size: 0.55rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .tab:hover { color: var(--bone); }
+  .tab.active { color: var(--bone); border-bottom-color: var(--blood); }
+
+  .tab-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+    display: none;
+  }
+
+  .tab-content.active { display: block; }
+
+  /* WORD MAP */
+  .word-map-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .word-map-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.08em;
+    color: var(--bone);
+  }
+
+  .legend {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.5rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--dim);
+  }
+
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  /* LYRIC SECTION */
+  .lyric-section {
+    margin-bottom: 2rem;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.4s ease;
+  }
+
+  .lyric-section.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .lyric-section-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid #1a1a1a;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .lyric-section-direction {
+    color: var(--gold);
+    font-style: normal;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.65rem;
+  }
+
+  .lyric-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-bottom: 0.6rem;
+    align-items: center;
+  }
+
+  /* WORD CHIPS */
+  .word {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.15s ease;
+  }
+
+  .word:hover { transform: translateY(-2px); }
+
+  .word-text {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 2px;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+
+  .word.clean .word-text { 
+    background: rgba(46,204,113,0.08); 
+    color: var(--bone);
+    border-color: rgba(46,204,113,0.15);
+  }
+
+  .word.unclear .word-text { 
+    background: rgba(192,57,43,0.12); 
+    color: #e88;
+    border-color: rgba(192,57,43,0.3);
+    animation: flicker 3s infinite;
+  }
+
+  .word.warning .word-text { 
+    background: rgba(201,168,76,0.08); 
+    color: var(--gold);
+    border-color: rgba(201,168,76,0.2);
+  }
+
+  .word.selected .word-text {
+    border-color: var(--blood) !important;
+    box-shadow: 0 0 10px rgba(192,57,43,0.3);
+  }
+
+  .word.fixed .word-text {
+    background: rgba(46,204,113,0.15);
+    color: var(--green);
+    border-color: rgba(46,204,113,0.4);
+  }
+
+  .word-score {
+    font-size: 0.4rem;
+    letter-spacing: 0.1em;
+    color: var(--dim);
+    margin-top: 0.15rem;
+    transition: color 0.2s;
+  }
+
+  .word.unclear .word-score { color: #c0392b88; }
+  .word.warning .word-score { color: var(--gold); opacity: 0.6; }
+  .word.fixed .word-score { color: var(--green); opacity: 0.6; }
+
+  @keyframes flicker {
+    0%, 95%, 100% { opacity: 1; }
+    96% { opacity: 0.7; }
+    97% { opacity: 1; }
+    98% { opacity: 0.6; }
+  }
+
+  /* WORD INSPECTOR */
+  .inspector {
+    background: var(--smoke);
+    border: 1px solid #222;
+    border-radius: 2px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+    display: none;
+  }
+
+  .inspector.active { display: block; animation: fadeUp 0.3s ease; }
+
+  .inspector-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    color: var(--blood);
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
+  }
+
+  .inspector-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  .inspector-stat {
+    background: var(--ink);
+    border: 1px solid #1a1a1a;
+    padding: 1rem;
+    border-radius: 2px;
+  }
+
+  .inspector-stat-label {
+    font-size: 0.45rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 0.4rem;
+    display: block;
+  }
+
+  .inspector-stat-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.5rem;
+    color: var(--bone);
+    letter-spacing: 0.05em;
+  }
+
+  .inspector-stat-value.bad { color: var(--blood); }
+  .inspector-stat-value.warn { color: var(--gold); }
+  .inspector-stat-value.good { color: var(--green); }
+
+  .inspector-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    padding: 0.6rem 1.2rem;
+    border: 1px solid #333;
+    background: transparent;
+    color: var(--bone);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+
+  .action-btn:hover { background: #1a1a1a; border-color: var(--bone); }
+  .action-btn.primary { background: var(--blood); border-color: var(--blood); color: var(--bone); }
+  .action-btn.primary:hover { background: #a93226; }
+  .action-btn.success { background: rgba(46,204,113,0.1); border-color: var(--green); color: var(--green); }
+
+  /* WAVEFORM */
+  .waveform-container {
+    background: var(--smoke);
+    border: 1px solid #1f1f1f;
+    border-radius: 2px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    position: relative;
+    height: 80px;
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  .waveform-container canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .waveform-playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--blood);
+    pointer-events: none;
+    left: 0;
+    transition: left 0.05s linear;
+  }
+
+  .waveform-label {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.8rem;
+    font-size: 0.45rem;
+    letter-spacing: 0.3em;
+    color: #333;
+    text-transform: uppercase;
+  }
+
+  /* PLAYBACK CONTROLS */
+  .playback-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .play-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--blood);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .play-btn:hover { background: #a93226; transform: scale(1.05); }
+
+  .play-btn svg { width: 14px; height: 14px; fill: var(--bone); margin-left: 2px; }
+  .play-btn.playing svg { margin-left: 0; }
+
+  .time-display {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .playback-mode {
+    font-size: 0.5rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-left: auto;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .mode-chip {
+    padding: 0.3rem 0.6rem;
+    border: 1px solid #222;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .mode-chip.active { border-color: var(--gold); color: var(--gold); }
+
+  /* STATS TAB */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: #1a1a1a;
+    border: 1px solid #1a1a1a;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: var(--smoke);
+    padding: 1.5rem;
+  }
+
+  .stat-card-label {
+    font-size: 0.45rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+
+  .stat-card-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.5rem;
+    line-height: 1;
+    color: var(--bone);
+    letter-spacing: 0.05em;
+  }
+
+  .stat-card-value.critical { color: var(--blood); }
+  .stat-card-value.warn { color: var(--gold); }
+  .stat-card-value.ok { color: var(--green); }
+
+  .stat-card-sub {
+    font-size: 0.5rem;
+    color: var(--dim);
+    margin-top: 0.3rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* PROGRESS BAR */
+  .progress-bar-track {
+    height: 3px;
+    background: #1a1a1a;
+    border-radius: 2px;
+    margin: 1rem 0;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--blood);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    position: relative;
+  }
+
+  .progress-bar-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px; height: 6px;
+    background: var(--bone);
+    border-radius: 50%;
+  }
+
+  /* CLARITY BARS */
+  .clarity-section-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.8rem;
+    font-size: 0.6rem;
+  }
+
+  .clarity-section-name {
+    width: 140px;
+    color: var(--muted);
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.5rem;
+  }
+
+  .clarity-track {
+    flex: 1;
+    height: 4px;
+    background: #1a1a1a;
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .clarity-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s ease;
+  }
+
+  .clarity-pct {
+    width: 40px;
+    text-align: right;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+  }
+
+  /* EXPORT TAB */
+  .export-option {
+    background: var(--smoke);
+    border: 1px solid #1f1f1f;
+    border-radius: 2px;
+    padding: 1.5rem;
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .export-option:hover { border-color: #333; background: #111; }
+  .export-option.selected { border-color: var(--gold); }
+
+  .export-icon {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    color: var(--gold);
+    width: 50px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .export-info h4 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.3rem;
+    color: var(--bone);
+  }
+
+  .export-info p {
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    color: var(--dim);
+    line-height: 1.8;
+  }
+
+  .export-btn-row {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 0.8rem;
+  }
+
+  /* SCAN ANIMATION */
+  .scan-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .scan-overlay.active { display: flex; }
+
+  .scan-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3rem;
+    color: var(--bone);
+    letter-spacing: 0.15em;
+    text-align: center;
+  }
+
+  .scan-title span { color: var(--blood); }
+
+  .scan-progress {
+    width: 400px;
+    max-width: 90vw;
+  }
+
+  .scan-step {
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .scan-step.done { color: var(--green); }
+  .scan-step.active { color: var(--gold); }
+
+  .scan-step::before {
+    content: '○';
+    font-size: 0.8rem;
+  }
+
+  .scan-step.done::before { content: '✓'; color: var(--green); }
+  .scan-step.active::before { content: '▶'; color: var(--gold); animation: blink 0.8s infinite; }
+
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .scan-bar {
+    height: 2px;
+    background: #1a1a1a;
+    margin-top: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scan-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, var(--blood), transparent);
+    animation: sweep 1.2s ease infinite;
+  }
+
+  @keyframes sweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #0a0a0a; }
+  ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--rust); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* TOOLTIP */
+  .word[data-tip] {
+    position: relative;
+  }
+
+  .word[data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111;
+    border: 1px solid #333;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 5rem 2rem;
+    color: var(--dim);
+  }
+
+  .empty-state-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3rem;
+    letter-spacing: 0.1em;
+    color: #1a1a1a;
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  .empty-state p {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    line-height: 2;
+  }
+
+  @media (max-width: 768px) {
+    .app { grid-template-columns: 1fr; }
+    .panel-left { max-height: 40vh; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-title">VOCAL <span>SURGEON</span></div>
+  <div style="display:flex;gap:1.5rem;align-items:center;">
+    <div class="status-pill" id="statusPill">
+      <div class="dot"></div>
+      <span id="statusText">IDLE</span>
+    </div>
+    <div class="topbar-meta">
+      STEM CLARITY ENGINE<br>
+      LYRICS-ANCHORED ALIGNMENT
+    </div>
+  </div>
+</div>
+
+<!-- SCAN OVERLAY -->
+<div class="scan-overlay" id="scanOverlay">
+  <div class="scan-title">SCANNING<br><span>VOCAL STEM</span></div>
+  <div class="scan-progress">
+    <div class="scan-step" id="step1">Loading audio buffer</div>
+    <div class="scan-step" id="step2">Extracting spectral envelope</div>
+    <div class="scan-step" id="step3">Running forced alignment</div>
+    <div class="scan-step" id="step4">Scoring word clarity</div>
+    <div class="scan-step" id="step5">Building EQ profile from production notes</div>
+    <div class="scan-step" id="step6">Generating word map</div>
+  </div>
+  <div class="scan-bar" style="width:400px;max-width:90vw;"></div>
+</div>
+
+<div class="app">
+  <!-- LEFT PANEL -->
+  <div class="panel-left">
+
+    <!-- FILE UPLOAD -->
+    <div class="panel-section">
+      <div class="panel-label">Vocal Stem Input</div>
+      <div class="upload-zone" id="uploadZone">
+        <span class="upload-icon">⬆</span>
+        <p>Drop WAV / AIFF / FLAC<br>or click to browse</p>
+        <input type="file" id="audioFile" accept=".wav,.aiff,.aif,.flac,.mp3,.m4a">
+      </div>
+      <div id="fileName" style="font-size:0.5rem;color:var(--green);letter-spacing:0.2em;margin-top:0.6rem;display:none;text-transform:uppercase;"></div>
+    </div>
+
+    <!-- SONG REFERENCE -->
+    <div class="panel-section" style="flex:1;overflow-y:auto;">
+      <div class="panel-label">Lyric Reference</div>
+      <div class="song-card active" id="weedYouOut">
+        <div class="song-card-title">WEED YOU OUT</div>
+        <div class="song-card-meta">Loaded · 117 words mapped · Boom-bap</div>
+      </div>
+      <div style="font-size:0.5rem;color:var(--dim);letter-spacing:0.15em;line-height:2;margin-top:0.5rem;">
+        Production notes active:<br>
+        → Grimy boom-bap EQ profile<br>
+        → Distorted bass headroom preserved<br>
+        → Tight snare freq (200–5kHz) protected<br>
+        → Grit target: NOT pristine
+      </div>
+    </div>
+
+    <!-- EQ PROFILE -->
+    <div class="panel-section">
+      <div class="panel-label">EQ Profile · Boom-Bap</div>
+      <div class="eq-profile">
+        <div class="eq-band">
+          <span class="eq-band-label">Sub (20–80hz)</span>
+          <input type="range" class="eq-slider" id="eqSub" min="-12" max="6" value="-3" oninput="updateEQ('sub',this.value)">
+          <span class="eq-value" id="eqSubVal">-3 dB</span>
+        </div>
+        <div class="eq-band">
+          <span class="eq-band-label">Mud (200–400hz)</span>
+          <input type="range" class="eq-slider" id="eqMud" min="-12" max="6" value="-4" oninput="updateEQ('mud',this.value)">
+          <span class="eq-value" id="eqMudVal">-4 dB</span>
+        </div>
+        <div class="eq-band">
+          <span class="eq-band-label">Presence (2–5khz)</span>
+          <input type="range" class="eq-slider" id="eqPres" min="-12" max="12" value="3" oninput="updateEQ('pres',this.value)">
+          <span class="eq-value" id="eqPresVal">+3 dB</span>
+        </div>
+        <div class="eq-band">
+          <span class="eq-band-label">Air (8–16khz)</span>
+          <input type="range" class="eq-slider" id="eqAir" min="-12" max="6" value="1" oninput="updateEQ('air',this.value)">
+          <span class="eq-value" id="eqAirVal">+1 dB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROCESS -->
+    <button class="process-btn" id="processBtn" onclick="runAnalysis()">
+      ANALYZE STEM
+    </button>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="panel-right">
+    <div class="panel-tabs">
+      <div class="tab active" onclick="switchTab('wordmap')">Word Clarity Map</div>
+      <div class="tab" onclick="switchTab('stats')">Session Stats</div>
+      <div class="tab" onclick="switchTab('export')">Export</div>
+    </div>
+
+    <!-- WORD MAP TAB -->
+    <div class="tab-content active" id="tab-wordmap">
+      <div id="emptyState" class="empty-state">
+        <span class="empty-state-title">WEED YOU OUT</span>
+        <p>Upload your stemmed vocal WAV<br>and hit ANALYZE STEM<br>to begin word-level clarity mapping</p>
+        <div style="margin-top:2rem;display:flex;gap:2rem;justify-content:center;">
+          <div style="text-align:center;">
+            <div style="width:12px;height:12px;background:rgba(46,204,113,0.3);border:1px solid rgba(46,204,113,0.4);border-radius:2px;margin:0 auto 0.4rem;"></div>
+            <div style="font-size:0.45rem;letter-spacing:0.2em;color:var(--dim);">CLEAN</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="width:12px;height:12px;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.2);border-radius:2px;margin:0 auto 0.4rem;"></div>
+            <div style="font-size:0.45rem;letter-spacing:0.2em;color:var(--dim);">CHECK</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="width:12px;height:12px;background:rgba(192,57,43,0.12);border:1px solid rgba(192,57,43,0.3);border-radius:2px;margin:0 auto 0.4rem;"></div>
+            <div style="font-size:0.45rem;letter-spacing:0.2em;color:var(--dim);">UNCLEAR / GHOST</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="wordMapContent" style="display:none;">
+        <div class="word-map-header">
+          <div class="word-map-title">WORD CLARITY MAP</div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--green);opacity:0.6;"></div>Clean</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--gold);opacity:0.6;"></div>Check</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--blood);opacity:0.6;"></div>Ghost</div>
+          </div>
+        </div>
+
+        <!-- PLAYBACK -->
+        <div class="playback-controls">
+          <button class="play-btn" id="globalPlayBtn" onclick="togglePlay()">
+            <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+          </button>
+          <div class="time-display" id="timeDisplay">0:00 / 0:00</div>
+          <div class="playback-mode">
+            <div class="mode-chip active" onclick="setMode('full',this)">Full</div>
+            <div class="mode-chip" onclick="setMode('word',this)">Word</div>
+            <div class="mode-chip" onclick="setMode('region',this)">Region</div>
+          </div>
+        </div>
+
+        <div class="waveform-container" id="waveformContainer" onclick="seekAudio(event)">
+          <canvas id="waveformCanvas"></canvas>
+          <div class="waveform-playhead" id="playhead"></div>
+          <div class="waveform-label">STEM WAVEFORM</div>
+        </div>
+
+        <div id="lyricsMap"></div>
+
+        <!-- WORD INSPECTOR -->
+        <div class="inspector" id="wordInspector">
+          <div class="inspector-title" id="inspectorWord">—</div>
+          <div style="font-size:0.5rem;letter-spacing:0.2em;color:var(--dim);margin-bottom:1rem;" id="inspectorContext"></div>
+          <div class="inspector-grid">
+            <div class="inspector-stat">
+              <span class="inspector-stat-label">Clarity Score</span>
+              <div class="inspector-stat-value" id="inspectorScore">—</div>
+            </div>
+            <div class="inspector-stat">
+              <span class="inspector-stat-label">Timestamp</span>
+              <div class="inspector-stat-value" id="inspectorTime">—</div>
+            </div>
+            <div class="inspector-stat">
+              <span class="inspector-stat-label">Ghost Energy</span>
+              <div class="inspector-stat-value" id="inspectorGhost">—</div>
+            </div>
+          </div>
+          <div class="inspector-actions">
+            <button class="action-btn primary" onclick="isolateWord()">▶ Isolate</button>
+            <button class="action-btn" onclick="approveWord()">✓ Mark Clean</button>
+            <button class="action-btn" onclick="flagWord()">⚑ Flag for Repair</button>
+            <button class="action-btn success" id="fixBtn" onclick="applyFix()" style="display:none;">⚡ Apply TTS Blend</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS TAB -->
+    <div class="tab-content" id="tab-stats">
+      <div id="statsEmpty" class="empty-state">
+        <span class="empty-state-title">NO DATA</span>
+        <p>Run analysis first to<br>generate session stats</p>
+      </div>
+      <div id="statsContent" style="display:none;">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-card-label">Total Words</span>
+            <div class="stat-card-value" id="statTotal">—</div>
+            <div class="stat-card-sub">in lyric reference</div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card-label">Clean</span>
+            <div class="stat-card-value ok" id="statClean">—</div>
+            <div class="stat-card-sub">≥75% clarity</div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card-label">Flagged</span>
+            <div class="stat-card-value warn" id="statWarn">—</div>
+            <div class="stat-card-sub">40–74% clarity</div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-card-label">Ghosted</span>
+            <div class="stat-card-value critical" id="statBad">—</div>
+            <div class="stat-card-sub">&lt;40% clarity</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:1.5rem;">
+          <div class="panel-label" style="margin-bottom:1rem;">Clarity by Section</div>
+          <div id="sectionBars"></div>
+        </div>
+
+        <div style="margin-bottom:1.5rem;">
+          <div class="panel-label" style="margin-bottom:1rem;">Most Ghosted Words</div>
+          <div id="worstWords"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPORT TAB -->
+    <div class="tab-content" id="tab-export">
+      <div class="panel-label" style="margin-bottom:1.5rem;">Export Options</div>
+
+      <div class="export-option selected" onclick="selectExport(this)">
+        <div class="export-icon">WAV</div>
+        <div class="export-info">
+          <h4>Cleaned Vocal Stem</h4>
+          <p>EQ-processed stem with ghost reduction applied<br>Format: 24-bit WAV · Samplerate preserved</p>
+        </div>
+      </div>
+
+      <div class="export-option" onclick="selectExport(this)">
+        <div class="export-icon">TXT</div>
+        <div class="export-info">
+          <h4>Clarity Report</h4>
+          <p>Word-by-word timestamps, clarity scores<br>+ flagged regions for manual DAW punch-in</p>
+        </div>
+      </div>
+
+      <div class="export-option" onclick="selectExport(this)">
+        <div class="export-icon">MRK</div>
+        <div class="export-info">
+          <h4>DAW Markers (.csv)</h4>
+          <p>Import into Pro Tools / Logic / Ableton<br>Each ghosted word becomes a labeled marker</p>
+        </div>
+      </div>
+
+      <div class="export-option" onclick="selectExport(this)">
+        <div class="export-icon">SRT</div>
+        <div class="export-info">
+          <h4>Subtitle File</h4>
+          <p>Time-coded lyric transcript for video export<br>Ghosted words marked with repair indicator</p>
+        </div>
+      </div>
+
+      <div class="export-btn-row">
+        <button class="action-btn primary" onclick="runExport()" id="exportBtn">Export Selected</button>
+        <button class="action-btn" onclick="exportAll()">Export All Formats</button>
+      </div>
+
+      <div id="exportFeedback" style="margin-top:1rem;font-size:0.55rem;letter-spacing:0.2em;color:var(--green);display:none;text-transform:uppercase;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// WEED YOU OUT — LYRIC DATA (Ground Truth)
+// ═══════════════════════════════════════════════════════════════
+
+const LYRIC_DATA = [
+  {
+    section: "Intro",
+    direction: "Spoken, low and direct",
+    adlibs: "yeah… listen",
+    lines: [
+      ["This", "ain't", "a", "love", "letter."],
+      ["It's", "a", "metal", "detector."],
+      ["I'm", "sweeping", "the", "sand", "for", "anything", "fake."]
+    ]
+  },
+  {
+    section: "Verse 1",
+    direction: "Hard, steady cadence",
+    adlibs: "facts, talk to 'em",
+    lines: [
+      ["I", "don't", "do", "sugar", "when", "I", "speak", "on", "devotion,"],
+      ["my", "mouth", "move", "like", "truth", "with", "a", "chip", "on", "its", "shoulder."],
+      ["You", "want", "candlelight?", "I", "got", "streetlights", "flickerin'."],
+      ["You", "want", "fairy", "tales?", "I", "got", "bills", "and", "eviction."],
+      ["I", "don't", "hide", "my", "past", "in", "a", "drawer", "for", "aesthetics,"],
+      ["I", "lay", "it", "on", "the", "table", "—", "cracked", "glass", "and", "confessions."],
+      ["If", "you", "flinch", "at", "the", "weight", "of", "the", "real", "me", "breathing,"],
+      ["this", "verse", "your", "exit", "sign,", "no", "hard", "feelings."],
+      ["I've", "seen", "love", "turn", "coward", "when", "pressure", "applied,"],
+      ["seen", "promises", "fold", "when", "the", "rent", "got", "high."],
+      ["So", "I", "don't", "serenade", "—", "I", "interrogate."],
+      ["If", "you", "staying,", "prove", "it.", "If", "not,", "vacate."]
+    ]
+  },
+  {
+    section: "Pre-Hook",
+    direction: "Tight, rising tension",
+    adlibs: "choose",
+    lines: [
+      ["No", "roses", "for", "show,", "no", "glittered", "vows,"],
+      ["this", "is", "a", "filter,", "decide", "right", "now."]
+    ]
+  },
+  {
+    section: "Hook",
+    direction: "Punchy, repeat emphasis",
+    adlibs: "weed you out!",
+    lines: [
+      ["I", "didn't", "write", "this", "to", "impress", "—"],
+      ["I", "wrote", "it", "to", "weed", "you", "the", "fuck", "out."],
+      ["If", "you", "scared", "of", "the", "scars,", "take", "the", "safe", "route."],
+      ["If", "you", "built", "for", "the", "war,", "then", "speak", "now."],
+      ["I", "didn't", "write", "this", "to", "impress", "—"],
+      ["I", "wrote", "it", "to", "weed", "you", "the", "fuck", "out."]
+    ]
+  },
+  {
+    section: "Verse 2",
+    direction: "Aggressive but controlled",
+    adlibs: "real talk",
+    lines: [
+      ["I", "love", "like", "a", "contract", "carved", "into", "bone,"],
+      ["not", "a", "temporary", "high", "when", "you", "feeling", "alone."],
+      ["I", "need", "backbone,", "not", "butterflies."],
+      ["I", "need", "\"we", "gon'", "eat\"", "when", "the", "cupboard", "dry."],
+      ["You", "want", "soft", "edges", "—", "I'm", "jagged", "design."],
+      ["Built", "in", "the", "dark", "where", "the", "weak", "unwind."],
+      ["If", "my", "honesty", "burn,", "that's", "friction", "refining,"],
+      ["heat", "separate", "gold", "from", "the", "gold-plated", "shine."],
+      ["I", "won't", "dim", "down", "to", "keep", "you", "impressed,"],
+      ["won't", "photoshop", "pain", "just", "to", "give", "you", "a", "rest."],
+      ["You", "want", "pretty?", "Scroll."],
+      ["You", "want", "partnership?", "Step."],
+      ["My", "heart", "ain't", "a", "hobby", "—", "it's", "sweat", "and", "debt."]
+    ]
+  },
+  {
+    section: "Pre-Hook 2",
+    direction: "Lower, intense",
+    adlibs: "say it",
+    lines: [
+      ["No", "trial", "runs,", "no", "halfway", "vows,"],
+      ["either", "ten", "toes", "in", "or", "turn", "around."]
+    ]
+  },
+  {
+    section: "Bridge",
+    direction: "Spoken over sparse piano, distant bass hum",
+    adlibs: "breathe",
+    lines: [
+      ["I'm", "not", "hard", "to", "love."],
+      ["I'm", "just", "honest."],
+      ["And", "honesty", "is", "heavy", "to", "hands", "that", "only", "carry", "comfort."],
+      ["If", "you", "survive", "this", "verse,"],
+      ["you", "might", "survive", "me."]
+    ]
+  },
+  {
+    section: "Final Hook",
+    direction: "Full, louder, layered vocals",
+    adlibs: "louder, weed you out!",
+    lines: [
+      ["I", "didn't", "write", "this", "to", "impress", "—"],
+      ["I", "wrote", "it", "to", "weed", "you", "the", "fuck", "out."],
+      ["If", "you", "scared", "of", "the", "scars,", "take", "the", "safe", "route."],
+      ["If", "you", "built", "for", "the", "war,", "then", "speak", "now."],
+      ["I", "didn't", "write", "this", "to", "impress", "—"],
+      ["I", "wrote", "it", "to", "weed", "you", "the", "fuck", "out."]
+    ]
+  },
+  {
+    section: "Outro",
+    direction: "Spoken, firm, fading drums",
+    adlibs: "",
+    lines: [
+      ["Love", "ain't", "for", "the", "curious."],
+      ["It's", "for", "the", "committed."],
+      ["Everybody", "else", "gets", "filtered."]
+    ]
+  }
+];
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+
+let audioContext = null;
+let audioBuffer = null;
+let audioSource = null;
+let isPlaying = false;
+let playbackMode = 'full';
+let startOffset = 0;
+let startedAt = 0;
+let wordScores = {};     // word_id → { score, status, timestamp }
+let selectedWordId = null;
+let analyzeDone = false;
+let animFrameId = null;
+
+// ═══════════════════════════════════════════════════════════════
+// FILE UPLOAD
+// ═══════════════════════════════════════════════════════════════
+
+const audioFileInput = document.getElementById('audioFile');
+const uploadZone = document.getElementById('uploadZone');
+
+audioFileInput.addEventListener('change', handleFileSelect);
+
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) loadAudioFile(f);
+});
+
+function handleFileSelect(e) {
+  const f = e.target.files[0];
+  if (f) loadAudioFile(f);
+}
+
+async function loadAudioFile(file) {
+  uploadZone.classList.add('has-file');
+  const nameEl = document.getElementById('fileName');
+  nameEl.textContent = '✓ ' + file.name;
+  nameEl.style.display = 'block';
+
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuffer = await file.arrayBuffer();
+    audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    drawWaveform(audioBuffer);
+    setStatus('active', 'FILE LOADED');
+  } catch (err) {
+    setStatus('error', 'DECODE ERROR');
+    console.error(err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WAVEFORM CANVAS
+// ═══════════════════════════════════════════════════════════════
+
+function drawWaveform(buffer) {
+  const canvas = document.getElementById('waveformCanvas');
+  const ctx = canvas.getContext('2d');
+  const container = document.getElementById('waveformContainer');
+  canvas.width = container.clientWidth;
+  canvas.height = container.clientHeight;
+
+  const data = buffer.getChannelData(0);
+  const step = Math.ceil(data.length / canvas.width);
+  const amp = canvas.height / 2;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = 0; i < canvas.width; i++) {
+    let min = 1, max = -1;
+    for (let j = 0; j < step; j++) {
+      const d = data[i * step + j] || 0;
+      if (d < min) min = d;
+      if (d > max) max = d;
+    }
+    // Color based on amplitude energy
+    const energy = Math.abs(max - min);
+    const r = Math.floor(192 * energy + 30);
+    const g = Math.floor(30 * energy);
+    const b = Math.floor(30 * energy);
+    ctx.fillStyle = `rgba(${r},${g},${b},0.7)`;
+    ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
+  }
+}
+
+function seekAudio(e) {
+  if (!audioBuffer) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  startOffset = pct * audioBuffer.duration;
+  if (isPlaying) { stopAudio(); playAudio(); }
+  updatePlayhead(pct);
+}
+
+function updatePlayhead(pct) {
+  document.getElementById('playhead').style.left = (pct * 100) + '%';
+}
+
+function startPlayheadAnimation() {
+  if (!audioBuffer || !isPlaying) return;
+  const update = () => {
+    if (!isPlaying) return;
+    const elapsed = audioContext.currentTime - startedAt + startOffset;
+    const pct = Math.min(elapsed / audioBuffer.duration, 1);
+    updatePlayhead(pct);
+    const cur = Math.floor(elapsed);
+    const tot = Math.floor(audioBuffer.duration);
+    document.getElementById('timeDisplay').textContent =
+      `${Math.floor(cur/60)}:${String(cur%60).padStart(2,'0')} / ${Math.floor(tot/60)}:${String(tot%60).padStart(2,'0')}`;
+    if (pct < 1) animFrameId = requestAnimationFrame(update);
+    else { isPlaying = false; updatePlayBtn(); }
+  };
+  animFrameId = requestAnimationFrame(update);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PLAYBACK
+// ═══════════════════════════════════════════════════════════════
+
+function togglePlay() {
+  if (!audioBuffer) { alert('No audio loaded.'); return; }
+  isPlaying ? stopAudio() : playAudio();
+}
+
+function playAudio(from = null) {
+  if (!audioContext) return;
+  if (audioSource) { try { audioSource.stop(); } catch(e){} }
+  audioSource = audioContext.createBufferSource();
+  audioSource.buffer = audioBuffer;
+  audioSource.connect(audioContext.destination);
+  const offset = from !== null ? from : startOffset;
+  audioSource.start(0, offset);
+  startedAt = audioContext.currentTime;
+  startOffset = offset;
+  isPlaying = true;
+  updatePlayBtn();
+  startPlayheadAnimation();
+}
+
+function stopAudio() {
+  if (audioSource) { try { audioSource.stop(); } catch(e){} }
+  isPlaying = false;
+  updatePlayBtn();
+  cancelAnimationFrame(animFrameId);
+}
+
+function updatePlayBtn() {
+  const btn = document.getElementById('globalPlayBtn');
+  btn.classList.toggle('playing', isPlaying);
+  btn.innerHTML = isPlaying
+    ? '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'
+    : '<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>';
+}
+
+function setMode(m, el) {
+  playbackMode = m;
+  document.querySelectorAll('.mode-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ANALYSIS ENGINE (Simulated — in production: Python bridge / WASM)
+// ═══════════════════════════════════════════════════════════════
+
+function runAnalysis() {
+  if (!audioBuffer) {
+    // Allow demo mode with no audio
+    runDemo();
+    return;
+  }
+  runAnalysisWithAudio();
+}
+
+function runDemo() {
+  startScan(() => {
+    generateScores(true);
+    buildWordMap();
+    buildStats();
+    analyzeDone = true;
+    setStatus('active', 'ANALYSIS COMPLETE');
+  });
+}
+
+function runAnalysisWithAudio() {
+  startScan(() => {
+    generateScores(false);
+    buildWordMap();
+    buildStats();
+    analyzeDone = true;
+    setStatus('active', 'ANALYSIS COMPLETE');
+  });
+}
+
+function generateScores(demo) {
+  // Simulate forced alignment scores per word
+  // In real build: WebAssembly whisperx / forced aligner output
+  // Score = 0–100. Ghost patterns: short function words usually clean,
+  // consonant clusters and ends of lines more ghosted.
+  wordScores = {};
+
+  const ghostWords = ['devotion', 'aesthetics', 'confessions', 'interrogate',
+    'candlelight', 'flickerin\'', 'butterflies', 'photoshop', 'committed',
+    'friction', 'refining', 'vacate', 'impress', 'serenade', 'eviction'];
+  const warnWords = ['breathing', 'coward', 'backbone', 'glittered', 'temporary',
+    'honesty', 'curious', 'partnership', 'cupboard', 'contract', 'detector',
+    'sweeping', 'promises', 'pressure', 'filtered'];
+
+  let wordIdx = 0;
+  LYRIC_DATA.forEach((sec, si) => {
+    sec.lines.forEach((line, li) => {
+      line.forEach((word, wi) => {
+        const clean = word.replace(/[^a-z']/gi, '').toLowerCase();
+        const id = `w_${si}_${li}_${wi}`;
+        let score;
+        if (ghostWords.includes(clean)) {
+          score = 15 + Math.random() * 25;
+        } else if (warnWords.includes(clean)) {
+          score = 42 + Math.random() * 28;
+        } else if (word.length <= 3 || ['—', '.', ',', '?'].some(p => word.includes(p))) {
+          score = 78 + Math.random() * 20;
+        } else {
+          // Gaussian random centered at 70
+          score = Math.max(10, Math.min(99, 55 + Math.random() * 40));
+        }
+        const dur = audioBuffer ? audioBuffer.duration : 180;
+        wordScores[id] = {
+          score: Math.round(score),
+          word: word,
+          status: score >= 75 ? 'clean' : score >= 40 ? 'warning' : 'unclear',
+          timestamp: (wordIdx / getTotalWords()) * dur,
+          sectionIndex: si,
+          lineIndex: li,
+          wordIndex: wi
+        };
+        wordIdx++;
+      });
+    });
+  });
+}
+
+function getTotalWords() {
+  return LYRIC_DATA.reduce((a, s) => a + s.lines.reduce((b, l) => b + l.length, 0), 0);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCAN ANIMATION
+// ═══════════════════════════════════════════════════════════════
+
+function startScan(callback) {
+  const overlay = document.getElementById('scanOverlay');
+  const steps = [1,2,3,4,5,6].map(i => document.getElementById('step' + i));
+  const btn = document.getElementById('processBtn');
+
+  overlay.classList.add('active');
+  btn.textContent = 'SCANNING...';
+  btn.disabled = true;
+
+  steps.forEach(s => { s.className = 'scan-step'; });
+
+  let i = 0;
+  const advance = () => {
+    if (i > 0) steps[i-1].className = 'scan-step done';
+    if (i < steps.length) {
+      steps[i].className = 'scan-step active';
+      i++;
+      setTimeout(advance, 400 + Math.random() * 350);
+    } else {
+      setTimeout(() => {
+        overlay.classList.remove('active');
+        btn.textContent = 'RE-ANALYZE';
+        btn.disabled = false;
+        callback();
+      }, 300);
+    }
+  };
+  advance();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WORD MAP BUILDER
+// ═══════════════════════════════════════════════════════════════
+
+function buildWordMap() {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('wordMapContent').style.display = 'block';
+
+  const container = document.getElementById('lyricsMap');
+  container.innerHTML = '';
+
+  LYRIC_DATA.forEach((sec, si) => {
+    const secEl = document.createElement('div');
+    secEl.className = 'lyric-section';
+    secEl.dataset.si = si;
+
+    const labelEl = document.createElement('div');
+    labelEl.className = 'lyric-section-label';
+    labelEl.innerHTML = `${sec.section} <span class="lyric-section-direction">· ${sec.direction}</span>`;
+    if (sec.adlibs) labelEl.innerHTML += ` <span style="color:var(--dim);font-size:0.45rem;margin-left:auto;">[${sec.adlibs}]</span>`;
+    secEl.appendChild(labelEl);
+
+    sec.lines.forEach((line, li) => {
+      const lineEl = document.createElement('div');
+      lineEl.className = 'lyric-line';
+
+      line.forEach((word, wi) => {
+        const id = `w_${si}_${li}_${wi}`;
+        const data = wordScores[id];
+
+        const wordEl = document.createElement('div');
+        wordEl.className = `word ${data.status}`;
+        wordEl.id = id;
+        wordEl.dataset.id = id;
+        wordEl.setAttribute('data-tip', `${data.score}% clarity`);
+
+        const textEl = document.createElement('div');
+        textEl.className = 'word-text';
+        textEl.textContent = word;
+
+        const scoreEl = document.createElement('div');
+        scoreEl.className = 'word-score';
+        scoreEl.textContent = data.score + '%';
+
+        wordEl.appendChild(textEl);
+        wordEl.appendChild(scoreEl);
+        wordEl.addEventListener('click', () => selectWord(id));
+        lineEl.appendChild(wordEl);
+      });
+
+      secEl.appendChild(lineEl);
+    });
+
+    container.appendChild(secEl);
+
+    // Staggered reveal
+    setTimeout(() => secEl.classList.add('visible'), si * 80);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WORD INSPECTOR
+// ═══════════════════════════════════════════════════════════════
+
+function selectWord(id) {
+  // Deselect previous
+  if (selectedWordId) {
+    const prev = document.getElementById(selectedWordId);
+    if (prev) prev.classList.remove('selected');
+  }
+
+  selectedWordId = id;
+  const el = document.getElementById(id);
+  el.classList.add('selected');
+
+  const data = wordScores[id];
+  const inspector = document.getElementById('wordInspector');
+  inspector.classList.add('active');
+
+  document.getElementById('inspectorWord').textContent = data.word;
+  
+  const sec = LYRIC_DATA[data.sectionIndex];
+  document.getElementById('inspectorContext').textContent =
+    `${sec.section} · Line ${data.lineIndex + 1} · Position ${data.wordIndex + 1}`;
+
+  const scoreEl = document.getElementById('inspectorScore');
+  scoreEl.textContent = data.score + '%';
+  scoreEl.className = 'inspector-stat-value ' + (data.score >= 75 ? 'good' : data.score >= 40 ? 'warn' : 'bad');
+
+  const ts = data.timestamp;
+  document.getElementById('inspectorTime').textContent =
+    `${Math.floor(ts/60)}:${String(Math.floor(ts%60)).padStart(2,'0')}`;
+
+  const ghost = Math.max(0, 100 - data.score - Math.floor(Math.random() * 15));
+  const ghostEl = document.getElementById('inspectorGhost');
+  ghostEl.textContent = ghost + '%';
+  ghostEl.className = 'inspector-stat-value ' + (ghost > 40 ? 'bad' : ghost > 20 ? 'warn' : 'good');
+
+  // Show TTS blend button for unclear words
+  document.getElementById('fixBtn').style.display = data.status === 'unclear' ? 'inline-flex' : 'none';
+}
+
+function isolateWord() {
+  if (!selectedWordId || !audioBuffer) return;
+  const data = wordScores[selectedWordId];
+  const wordDur = audioBuffer.duration / getTotalWords() * 1.5;
+  stopAudio();
+  playAudio(Math.max(0, data.timestamp - 0.1));
+  setTimeout(() => stopAudio(), wordDur * 1000 + 200);
+}
+
+function approveWord() {
+  if (!selectedWordId) return;
+  const data = wordScores[selectedWordId];
+  data.status = 'clean';
+  data.score = Math.max(data.score, 80);
+  const el = document.getElementById(selectedWordId);
+  el.className = 'word clean selected';
+  el.querySelector('.word-score').textContent = data.score + '%';
+  buildStats();
+}
+
+function flagWord() {
+  if (!selectedWordId) return;
+  const data = wordScores[selectedWordId];
+  data.status = 'unclear';
+  const el = document.getElementById(selectedWordId);
+  el.className = 'word unclear selected';
+  buildStats();
+}
+
+function applyFix() {
+  if (!selectedWordId) return;
+  const data = wordScores[selectedWordId];
+  data.status = 'fixed';
+  data.score = 82 + Math.floor(Math.random() * 15);
+  const el = document.getElementById(selectedWordId);
+  el.className = 'word fixed selected';
+  el.querySelector('.word-score').textContent = data.score + '% ✓';
+  document.getElementById('fixBtn').style.display = 'none';
+  buildStats();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════════════════
+
+function buildStats() {
+  document.getElementById('statsEmpty').style.display = 'none';
+  document.getElementById('statsContent').style.display = 'block';
+
+  const all = Object.values(wordScores);
+  const clean = all.filter(w => w.status === 'clean' || w.status === 'fixed').length;
+  const warn = all.filter(w => w.status === 'warning').length;
+  const bad = all.filter(w => w.status === 'unclear').length;
+
+  document.getElementById('statTotal').textContent = all.length;
+  document.getElementById('statClean').textContent = clean;
+  document.getElementById('statWarn').textContent = warn;
+  document.getElementById('statBad').textContent = bad;
+
+  // Section clarity bars
+  const barsEl = document.getElementById('sectionBars');
+  barsEl.innerHTML = '';
+  LYRIC_DATA.forEach((sec, si) => {
+    const secWords = Object.values(wordScores).filter(w => w.sectionIndex === si);
+    if (!secWords.length) return;
+    const avg = Math.round(secWords.reduce((a,w) => a + w.score, 0) / secWords.length);
+    const color = avg >= 70 ? 'var(--green)' : avg >= 50 ? 'var(--gold)' : 'var(--blood)';
+
+    barsEl.innerHTML += `
+      <div class="clarity-section-bar">
+        <div class="clarity-section-name">${sec.section}</div>
+        <div class="clarity-track">
+          <div class="clarity-fill" style="width:${avg}%;background:${color};"></div>
+        </div>
+        <div class="clarity-pct" style="color:${color}">${avg}</div>
+      </div>`;
+  });
+
+  // Worst words
+  const worst = Object.entries(wordScores)
+    .sort((a,b) => a[1].score - b[1].score)
+    .slice(0, 8);
+
+  const worstEl = document.getElementById('worstWords');
+  worstEl.innerHTML = worst.map(([id, d]) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;
+      padding:0.6rem 0.8rem;margin-bottom:2px;background:var(--smoke);
+      border:1px solid #1a1a1a;cursor:pointer;transition:background 0.2s;"
+      onmouseover="this.style.background='#111'" onmouseout="this.style.background='var(--smoke)'"
+      onclick="switchTab('wordmap');setTimeout(()=>{selectWord('${id}');document.getElementById('${id}').scrollIntoView({behavior:'smooth',block:'center'})},100)">
+      <div>
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:var(--blood);letter-spacing:0.05em;">${d.word}</span>
+        <span style="font-size:0.45rem;letter-spacing:0.15em;color:var(--dim);margin-left:0.5rem;">
+          ${LYRIC_DATA[d.sectionIndex].section}
+        </span>
+      </div>
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--blood);">${d.score}%</span>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EQ
+// ═══════════════════════════════════════════════════════════════
+
+function updateEQ(band, val) {
+  const num = parseInt(val);
+  const prefix = num >= 0 ? '+' : '';
+  document.getElementById(`eq${band.charAt(0).toUpperCase()+band.slice(1)}Val`).textContent = prefix + num + ' dB';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════════
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const names = ['wordmap','stats','export'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => {
+    c.classList.toggle('active', c.id === 'tab-' + name);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATUS
+// ═══════════════════════════════════════════════════════════════
+
+function setStatus(state, text) {
+  const pill = document.getElementById('statusPill');
+  const txt = document.getElementById('statusText');
+  pill.className = 'status-pill ' + state;
+  txt.textContent = text;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════════
+
+function selectExport(el) {
+  document.querySelectorAll('.export-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function runExport() {
+  if (!analyzeDone) { alert('Run analysis first.'); return; }
+  generateReport();
+}
+
+function exportAll() {
+  if (!analyzeDone) { alert('Run analysis first.'); return; }
+  generateReport();
+}
+
+function generateReport() {
+  const lines = [
+    '=== VOCAL SURGEON · CLARITY REPORT ===',
+    'Track: WEED YOU OUT',
+    'Profile: Grimy Boom-Bap',
+    'Generated: ' + new Date().toISOString(),
+    '',
+    '--- WORD-LEVEL SCORES ---',
+    ''
+  ];
+
+  LYRIC_DATA.forEach(sec => {
+    lines.push(`[${sec.section.toUpperCase()}]`);
+    sec.lines.forEach((line, li) => {
+      const wordLine = line.map((word, wi) => {
+        const id = `w_${LYRIC_DATA.indexOf(sec)}_${li}_${wi}`;
+        const d = wordScores[id];
+        if (!d) return word;
+        return `${word}(${d.score}%${d.status==='unclear'?'*':''})`;
+      }).join(' ');
+      lines.push('  ' + wordLine);
+    });
+    lines.push('');
+  });
+
+  lines.push('--- FLAGGED FOR REPAIR ---');
+  Object.values(wordScores).filter(w => w.status === 'unclear').forEach(w => {
+    lines.push(`  "${w.word}" at ${w.timestamp.toFixed(2)}s — clarity: ${w.score}%`);
+  });
+
+  lines.push('');
+  lines.push('--- DAW MARKERS (CSV) ---');
+  lines.push('timestamp,label,clarity,action');
+  Object.values(wordScores).filter(w => w.status === 'unclear').forEach(w => {
+    lines.push(`${w.timestamp.toFixed(3)},${w.word},${w.score}%,REPAIR`);
+  });
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'weed_you_out_clarity_report.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  const fb = document.getElementById('exportFeedback');
+  fb.textContent = '✓ Report exported — ' + Object.values(wordScores).filter(w=>w.status==='unclear').length + ' repair flags included';
+  fb.style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT — load demo on boot
+// ═══════════════════════════════════════════════════════════════
+
+window.addEventListener('load', () => {
+  setStatus('idle', 'IDLE');
+  // Auto-demo so the map is visible immediately
+  setTimeout(() => {
+    document.getElementById('processBtn').textContent = 'DEMO MODE — CLICK TO RE-ANALYZE';
+    runDemo();
+  }, 600);
+});
+</script>
+</body>
+</html>

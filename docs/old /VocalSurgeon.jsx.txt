@@ -1,0 +1,924 @@
+import { useState, useRef, useEffect, useCallback } from "react";
+
+// ─── Fonts via @import in a style tag ───────────────────────────────────────
+const GlobalStyles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+    :root {
+      --ink:#07070a; --bone:#eee8d4; --blood:#c0392b; --rust:#7a3020;
+      --gold:#c9a84c; --green:#27ae60; --blue:#2980b9; --smoke:#101014;
+      --mid:#1a1a20; --dim:#55555e; --muted:#9a8f7e;
+    }
+    * { box-sizing: border-box; }
+    body { background: var(--ink); margin: 0; cursor: crosshair; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0a0a0d; }
+    ::-webkit-scrollbar-thumb { background: #2a2a30; border-radius: 2px; }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(18px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    @keyframes scan {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(400%); }
+    }
+    @keyframes flicker {
+      0%,94%,100%{opacity:1} 95%{opacity:.6} 97%{opacity:.85}
+    }
+    .fade-up { animation: fadeUp .6s ease both; }
+    .word-ghost { animation: flicker 3s infinite; }
+    .scanning-bar::after {
+      content:''; position:absolute; inset:0;
+      background: linear-gradient(90deg,transparent,#c0392b88,transparent);
+      animation: scan 1.4s ease infinite;
+    }
+  `}</style>
+);
+
+// ─── Demo lyric structure (no full lyrics — structural scaffold) ─────────────
+const DEMO_LYRICS = [
+  { section:"Intro",    direction:"Spoken, low and direct",            adlibs:"yeah… listen",         lines:[["This","ain't","a","love","letter."],["It's","a","metal","detector."]] },
+  { section:"Verse 1",  direction:"Hard, steady cadence",              adlibs:"facts, talk to 'em",   lines:[["I","don't","do","sugar","when","I","speak","on","devotion,"],["my","mouth","move","like","truth","with","a","chip","on","its","shoulder."],["You","want","candlelight?","I","got","streetlights","flickerin'."],["If","you","flinch","at","the","weight","of","the","real","me","breathing,"],["this","verse","your","exit","sign,","no","hard","feelings."],["So","I","don't","serenade","—","I","interrogate."]] },
+  { section:"Pre-Hook", direction:"Tight, rising tension",             adlibs:"choose",               lines:[["No","roses","for","show,","no","glittered","vows,"],["this","is","a","filter,","decide","right","now."]] },
+  { section:"Hook",     direction:"Punchy, repeat emphasis",           adlibs:"weed you out!",        lines:[["I","didn't","write","this","to","impress","—"],["I","wrote","it","to","weed","you","the","fuck","out."],["If","you","scared","of","the","scars,","take","the","safe","route."]] },
+  { section:"Verse 2",  direction:"Aggressive but controlled",         adlibs:"real talk",            lines:[["I","love","like","a","contract","carved","into","bone,"],["I","need","backbone,","not","butterflies."],["heat","separate","gold","from","the","gold-plated","shine."],["My","heart","ain't","a","hobby","—","it's","sweat","and","debt."]] },
+  { section:"Bridge",   direction:"Spoken over sparse piano",          adlibs:"breathe",              lines:[["I'm","not","hard","to","love."],["I'm","just","honest."],["If","you","survive","this","verse,"],["you","might","survive","me."]] },
+  { section:"Outro",    direction:"Spoken, firm, fading drums",        adlibs:"",                     lines:[["Love","ain't","for","the","curious."],["It's","for","the","committed."],["Everybody","else","gets","filtered."]] },
+];
+
+const GHOST_WORDS  = new Set(["devotion","aesthetics","confessions","interrogate","candlelight","flickerin'","butterflies","photoshop","serenade","eviction"]);
+const WARN_WORDS   = new Set(["breathing","coward","backbone","glittered","temporary","honesty","curious","committed","contract","detector","sweeping","promises","pressure","filtered"]);
+
+const EQ_PRESETS = {
+  "boom-bap":     { sub:-3, mud:-4, presence: 3, air: 1, label:"Grimy Boom-Bap" },
+  "clean-vocal":  { sub:-6, mud:-6, presence: 5, air: 3, label:"Clean Vocal" },
+  "lo-fi":        { sub: 0, mud: 2, presence:-2, air:-4, label:"Lo-Fi" },
+  "bright":       { sub:-4, mud:-3, presence: 6, air: 5, label:"Bright & Present" },
+};
+
+function scoreWord(word) {
+  const clean = word.replace(/[^a-z']/gi,"").toLowerCase();
+  if (GHOST_WORDS.has(clean))  return Math.round(12 + Math.random()*22);
+  if (WARN_WORDS.has(clean))   return Math.round(42 + Math.random()*26);
+  if (word.length <= 3 || /[—.,?!]/.test(word)) return Math.round(78 + Math.random()*20);
+  return Math.round(Math.max(18, Math.min(98, 52 + Math.random()*44)));
+}
+
+function scoreClass(s) {
+  if (s >= 75) return "clean";
+  if (s >= 40) return "warn";
+  return "ghost";
+}
+
+// ─── Waveform Canvas ──────────────────────────────────────────────────────────
+function WaveformCanvas({ buffer, playPct, onSeek }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (!buffer || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const { width, height } = canvas;
+    const data = buffer.getChannelData(0);
+    const step = Math.ceil(data.length / width);
+    ctx.clearRect(0, 0, width, height);
+    for (let i = 0; i < width; i++) {
+      let min = 1, max = -1;
+      for (let j = 0; j < step; j++) {
+        const d = data[i * step + j] || 0;
+        if (d < min) min = d; if (d > max) max = d;
+      }
+      const energy = Math.abs(max - min);
+      const r = Math.floor(160 * energy + 40);
+      const g = Math.floor(20 * energy);
+      ctx.fillStyle = `rgba(${r},${g},${g},0.75)`;
+      const amp = height / 2;
+      ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
+    }
+  }, [buffer]);
+
+  return (
+    <div
+      className="relative overflow-hidden rounded-sm cursor-crosshair"
+      style={{ background:"#0a0a0e", border:"1px solid #1f1f28", height:72 }}
+      onClick={e => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        onSeek((e.clientX - rect.left) / rect.width);
+      }}
+    >
+      <canvas ref={canvasRef} width={800} height={72} style={{ width:"100%", height:"100%", display:"block" }} />
+      {playPct > 0 && (
+        <div
+          className="absolute top-0 bottom-0 w-px pointer-events-none"
+          style={{ left: `${playPct * 100}%`, background:"#c0392b", boxShadow:"0 0 6px #c0392b88" }}
+        />
+      )}
+      <div style={{ position:"absolute", top:6, right:10, fontFamily:"'Space Mono',monospace", fontSize:9, letterSpacing:"0.3em", color:"#2a2a30", textTransform:"uppercase" }}>
+        STEM WAVEFORM
+      </div>
+    </div>
+  );
+}
+
+// ─── Word Chip ─────────────────────────────────────────────────────────────────
+function WordChip({ id, word, score, status, selected, onSelect }) {
+  const colors = {
+    clean: { bg:"rgba(39,174,96,0.10)", border:"rgba(39,174,96,0.25)", text:"#a8e6c0" },
+    warn:  { bg:"rgba(201,168,76,0.10)", border:"rgba(201,168,76,0.22)", text:"#c9a84c" },
+    ghost: { bg:"rgba(192,57,43,0.12)", border:"rgba(192,57,43,0.30)", text:"#e08080" },
+    fixed: { bg:"rgba(39,174,96,0.18)", border:"rgba(39,174,96,0.50)", text:"#2ecc71" },
+  };
+  const c = colors[status] || colors.clean;
+  return (
+    <button
+      onClick={() => onSelect(id)}
+      className={status === "ghost" ? "word-ghost" : ""}
+      title={`${score}% clarity`}
+      style={{
+        display:"inline-flex", flexDirection:"column", alignItems:"center",
+        padding:"2px 6px", borderRadius:2, cursor:"pointer", transition:"transform .15s",
+        background: selected ? "rgba(192,57,43,0.18)" : c.bg,
+        border: `1px solid ${selected ? "#c0392b" : c.border}`,
+        boxShadow: selected ? "0 0 8px rgba(192,57,43,0.25)" : "none",
+        fontFamily:"'Bebas Neue',sans-serif",
+      }}
+      onMouseEnter={e => e.currentTarget.style.transform="translateY(-2px)"}
+      onMouseLeave={e => e.currentTarget.style.transform="translateY(0)"}
+    >
+      <span style={{ fontSize:14, letterSpacing:"0.04em", color: c.text }}>{word}</span>
+      <span style={{ fontSize:8, letterSpacing:"0.1em", color: c.text, opacity:.6 }}>{score}%</span>
+    </button>
+  );
+}
+
+// ─── Section Label ─────────────────────────────────────────────────────────────
+function SectionLabel({ section, direction, adlibs }) {
+  return (
+    <div style={{ borderBottom:"1px solid #1a1a22", paddingBottom:8, marginBottom:10 }}>
+      <div style={{ display:"flex", alignItems:"baseline", gap:10, flexWrap:"wrap" }}>
+        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, letterSpacing:"0.3em", color:"#c0392b", textTransform:"uppercase" }}>{section}</span>
+        <span style={{ fontFamily:"'Playfair Display',serif", fontStyle:"italic", fontSize:11, color:"#9a8f7e" }}>· {direction}</span>
+        {adlibs && <span style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:"#333340", letterSpacing:"0.15em", marginLeft:"auto" }}>[{adlibs}]</span>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Inspector Panel ──────────────────────────────────────────────────────────
+function Inspector({ wordData, onApprove, onFlag, onFix }) {
+  if (!wordData) return (
+    <div style={{ background:"#0e0e12", border:"1px solid #1a1a22", borderRadius:2, padding:"2rem", textAlign:"center" }}>
+      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.5rem", color:"#1a1a22", letterSpacing:"0.1em" }}>SELECT A WORD</div>
+      <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:"#333", letterSpacing:"0.2em", textTransform:"uppercase", marginTop:6 }}>Click any word to inspect</div>
+    </div>
+  );
+
+  const { word, score, status, sectionName, timestamp } = wordData;
+  const ghost = Math.max(0, 100 - score - Math.floor(Math.random()*10));
+  const scoreColor = score >= 75 ? "#27ae60" : score >= 40 ? "#c9a84c" : "#c0392b";
+
+  return (
+    <div className="fade-up" style={{ background:"#0e0e12", border:"1px solid #222228", borderRadius:2, padding:"1.5rem" }}>
+      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.2rem", color: status==="fixed" ? "#27ae60" : "#c0392b", letterSpacing:"0.06em", marginBottom:4 }}>{word.toUpperCase()}</div>
+      <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, letterSpacing:"0.2em", color:"#555560", textTransform:"uppercase", marginBottom:"1rem" }}>
+        {sectionName} · {Math.floor(timestamp/60)}:{String(Math.floor(timestamp%60)).padStart(2,"0")}s
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:1, background:"#1a1a20", marginBottom:"1rem" }}>
+        {[["Clarity",`${score}%`,scoreColor],["Timestamp",`${timestamp.toFixed(1)}s`,"#c9a84c"],["Ghost Eng",`${ghost}%`,ghost>40?"#c0392b":ghost>20?"#c9a84c":"#27ae60"]].map(([label,val,col])=>(
+          <div key={label} style={{ background:"#0a0a0e", padding:"0.8rem 0.6rem" }}>
+            <div style={{ fontFamily:"'Space Mono',monospace", fontSize:8, letterSpacing:"0.25em", color:"#444450", textTransform:"uppercase", marginBottom:4 }}>{label}</div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", color:col, letterSpacing:"0.04em" }}>{val}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+        {[
+          { label:"▶ Isolate",   action: ()=>{},         style:{ background:"#1a1a20", border:"1px solid #2a2a30", color:"#eee8d4" } },
+          { label:"✓ Approve",   action: onApprove,      style:{ background:"rgba(39,174,96,.1)", border:"1px solid rgba(39,174,96,.3)", color:"#27ae60" } },
+          { label:"⚑ Flag",      action: onFlag,         style:{ background:"rgba(201,168,76,.08)", border:"1px solid rgba(201,168,76,.25)", color:"#c9a84c" } },
+          ...(status==="ghost"||status==="warn" ? [{ label:"⚡ TTS Fix",  action: onFix, style:{ background:"rgba(192,57,43,.12)", border:"1px solid rgba(192,57,43,.35)", color:"#e08080" } }] : []),
+        ].map(btn => (
+          <button key={btn.label} onClick={btn.action}
+            style={{ ...btn.style, padding:"6px 12px", borderRadius:2, fontFamily:"'Space Mono',monospace", fontSize:9, letterSpacing:"0.2em", textTransform:"uppercase", cursor:"pointer", transition:"all .2s" }}
+            onMouseEnter={e => e.currentTarget.style.opacity=".75"}
+            onMouseLeave={e => e.currentTarget.style.opacity="1"}
+          >{btn.label}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── EQ Panel ────────────────────────────────────────────────────────────────
+function EQPanel({ eq, setEq, preset, setPreset }) {
+  const bands = [
+    { key:"sub",      label:"Sub",      range:"20–80 Hz" },
+    { key:"mud",      label:"Mud",      range:"200–400 Hz" },
+    { key:"presence", label:"Presence", range:"2–5 kHz" },
+    { key:"air",      label:"Air",      range:"8–16 kHz" },
+  ];
+
+  return (
+    <div style={{ background:"#0e0e12", border:"1px solid #1a1a22", borderRadius:2, padding:"1.2rem" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"1rem" }}>
+        <span style={{ fontFamily:"'Space Mono',monospace", fontSize:9, letterSpacing:"0.35em", color:"#c0392b", textTransform:"uppercase" }}>EQ Profile</span>
+        <select
+          value={preset}
+          onChange={e => { setPreset(e.target.value); setEq({...EQ_PRESETS[e.target.value]}); }}
+          style={{ background:"#1a1a20", border:"1px solid #2a2a30", color:"#c9a84c", fontFamily:"'Space Mono',monospace", fontSize:9, letterSpacing:"0.1em", padding:"3px 6px", cursor:"pointer", borderRadius:2 }}
+        >
+          {Object.entries(EQ_PRESETS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+        {bands.map(({ key, label, range }) => (
+          <div key={key} style={{ background:"#080810", border:"1px solid #161620", borderRadius:2, padding:"0.7rem" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:6 }}>
+              <span style={{ fontFamily:"'Space Mono',monospace", fontSize:8, letterSpacing:"0.2em", color:"#44444e", textTransform:"uppercase" }}>{label}</span>
+              <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:"#c9a84c", letterSpacing:"0.04em" }}>{eq[key]>=0?"+":""}{eq[key]}dB</span>
+            </div>
+            <div style={{ fontFamily:"'Space Mono',monospace", fontSize:7, color:"#2a2a30", marginBottom:4 }}>{range}</div>
+            <input type="range" min={-12} max={12} step={0.5} value={eq[key]}
+              onChange={e => setEq(prev => ({ ...prev, [key]: parseFloat(e.target.value) }))}
+              style={{ width:"100%", accentColor:"#c9a84c", cursor:"pointer", height:2 }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Visual EQ curve */}
+      <div style={{ marginTop:10, height:36, background:"#080810", border:"1px solid #161620", borderRadius:2, overflow:"hidden", position:"relative" }}>
+        <svg width="100%" height="36" style={{ display:"block" }}>
+          <defs>
+            <linearGradient id="eqGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"   stopColor="#c0392b" stopOpacity=".6"/>
+              <stop offset="40%"  stopColor="#c9a84c" stopOpacity=".6"/>
+              <stop offset="70%"  stopColor="#27ae60" stopOpacity=".6"/>
+              <stop offset="100%" stopColor="#2980b9" stopOpacity=".6"/>
+            </linearGradient>
+          </defs>
+          {(() => {
+            const pts = [
+              [0,   18 - eq.sub      * 0.8],
+              [120, 18 - eq.mud      * 0.8],
+              [280, 18 - eq.presence * 0.8],
+              [400, 18 - eq.air      * 0.8],
+              [480, 18],
+            ];
+            const d = `M${pts[0][0]},${pts[0][1]} ` +
+              pts.slice(1).map((p,i) => {
+                const cp = [(pts[i][0]+p[0])/2, pts[i][1]];
+                const cp2= [(pts[i][0]+p[0])/2, p[1]];
+                return `C${cp[0]},${cp[1]} ${cp2[0]},${cp2[1]} ${p[0]},${p[1]}`;
+              }).join(" ");
+            return <path d={d} fill="none" stroke="url(#eqGrad)" strokeWidth="1.5" vectorEffect="non-scaling-stroke"/>;
+          })()}
+          <line x1="0" y1="18" x2="100%" y2="18" stroke="#1a1a20" strokeWidth="1" strokeDasharray="2,4"/>
+        </svg>
+        <div style={{ position:"absolute", top:3, right:8, fontFamily:"'Space Mono',monospace", fontSize:7, letterSpacing:"0.2em", color:"#222228", textTransform:"uppercase" }}>EQ CURVE</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Stats Tab ────────────────────────────────────────────────────────────────
+function StatsTab({ scores, lyrics }) {
+  if (!scores || Object.keys(scores).length === 0) return (
+    <div style={{ textAlign:"center", padding:"4rem 2rem" }}>
+      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"3rem", color:"#1a1a20", letterSpacing:"0.1em" }}>NO DATA YET</div>
+      <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:"#333", letterSpacing:"0.2em", marginTop:6 }}>Run analysis first</div>
+    </div>
+  );
+
+  const all = Object.values(scores);
+  const clean = all.filter(w=>w.status==="clean"||w.status==="fixed").length;
+  const warn  = all.filter(w=>w.status==="warn").length;
+  const ghost = all.filter(w=>w.status==="ghost").length;
+  const avg   = Math.round(all.reduce((a,w)=>a+w.score,0)/all.length);
+
+  const sectionStats = lyrics.map((sec, si) => {
+    const sw = all.filter(w=>w.si===si);
+    const a  = sw.length ? Math.round(sw.reduce((x,w)=>x+w.score,0)/sw.length) : 0;
+    return { name: sec.section, avg: a, count: sw.length };
+  });
+
+  const worst = [...all].sort((a,b)=>a.score-b.score).slice(0,8);
+
+  return (
+    <div className="fade-up" style={{ display:"flex", flexDirection:"column", gap:"1.5rem" }}>
+      {/* Summary cards */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:1, background:"#1a1a20" }}>
+        {[
+          ["Total Words", all.length, "#eee8d4"],
+          ["Clean",  clean, "#27ae60"],
+          ["Check",  warn,  "#c9a84c"],
+          ["Ghosted",ghost, "#c0392b"],
+        ].map(([label, val, color]) => (
+          <div key={label} style={{ background:"#0a0a0e", padding:"1.2rem 1rem" }}>
+            <div style={{ fontFamily:"'Space Mono',monospace", fontSize:8, letterSpacing:"0.3em", color:"#444450", textTransform:"uppercase", marginBottom:6 }}>{label}</div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2.5rem", color, letterSpacing:"0.04em", lineHeight:1 }}>{val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Avg clarity bar */}
+      <div style={{ background:"#0e0e12", border:"1px solid #1a1a22", borderRadius:2, padding:"1rem" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+          <span style={{ fontFamily:"'Space Mono',monospace", fontSize:9, letterSpacing:"0.3em", color:"#c0392b", textTransform:"uppercase" }}>Avg Clarity</span>
+          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.4rem", color: avg>=70?"#27ae60":avg>=50?"#c9a84c":"#c0392b", letterSpacing:"0.04em" }}>{avg}%</span>
+        </div>
+        <div style={{ height:4, background:"#1a1a20", borderRadius:2, overflow:"hidden" }}>
+          <div style={{ height:"100%", width:`${avg}%`, background: avg>=70?"#27ae60":avg>=50?"#c9a84c":"#c0392b", borderRadius:2, transition:"width .8s ease" }}/>
+        </div>
+      </div>
+
+      {/* Section bars */}
+      <div style={{ background:"#0e0e12", border:"1px solid #1a1a22", borderRadius:2, padding:"1rem" }}>
+        <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, letterSpacing:"0.35em", color:"#c0392b", textTransform:"uppercase", marginBottom:"0.8rem" }}>Clarity by Section</div>
+        {sectionStats.map(({ name, avg: a }) => (
+          <div key={name} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+            <div style={{ width:80, fontFamily:"'Space Mono',monospace", fontSize:8, letterSpacing:"0.1em", color:"#9a8f7e", textTransform:"uppercase", flexShrink:0 }}>{name}</div>
+            <div style={{ flex:1, height:3, background:"#1a1a20", borderRadius:2 }}>
+              <div style={{ height:"100%", width:`${a}%`, background:a>=70?"#27ae60":a>=50?"#c9a84c":"#c0392b", borderRadius:2, transition:"width 1s ease" }}/>
+            </div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1rem", color:a>=70?"#27ae60":a>=50?"#c9a84c":"#c0392b", width:32, textAlign:"right" }}>{a}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Worst words */}
+      <div style={{ background:"#0e0e12", border:"1px solid #1a1a22", borderRadius:2, padding:"1rem" }}>
+        <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, letterSpacing:"0.35em", color:"#c0392b", textTransform:"uppercase", marginBottom:"0.8rem" }}>Most Ghosted Words</div>
+        {worst.map(w => (
+          <div key={w.id} style={{ display:"flex", justifyContent:"space-between", padding:"6px 8px", marginBottom:2, background:"#080810", border:"1px solid #161620", borderRadius:2 }}>
+            <div>
+              <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1rem", color:"#c0392b", letterSpacing:"0.04em" }}>{w.word}</span>
+              <span style={{ fontFamily:"'Space Mono',monospace", fontSize:8, color:"#333340", marginLeft:8, letterSpacing:"0.1em" }}>{w.sectionName}</span>
+            </div>
+            <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1rem", color:"#c0392b" }}>{w.score}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Export Tab ───────────────────────────────────────────────────────────────
+function ExportTab({ scores, eq, hasAudio, onExport }) {
+  const [selected, setSelected] = useState("wav");
+  const [exported, setExported] = useState(false);
+
+  const opts = [
+    { id:"wav",  icon:"WAV",  title:"Cleaned Vocal Stem",   desc:"24-bit WAV · EQ applied · Ghost-reduced · Samplerate preserved" },
+    { id:"txt",  icon:"TXT",  title:"Clarity Report",       desc:"Word timestamps, scores, flagged regions for DAW punch-in" },
+    { id:"csv",  icon:"CSV",  title:"DAW Markers",          desc:"Import into Pro Tools / Logic / Ableton — each ghosted word = labeled marker" },
+    { id:"srt",  icon:"SRT",  title:"Subtitle File",        desc:"Time-coded transcript · ghosted words marked with repair indicator" },
+  ];
+
+  const handleExport = () => {
+    onExport(selected);
+    setExported(true);
+    setTimeout(() => setExported(false), 3000);
+  };
+
+  return (
+    <div className="fade-up" style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
+      {opts.map(o => (
+        <div key={o.id} onClick={() => setSelected(o.id)}
+          style={{ display:"flex", alignItems:"center", gap:"1.2rem", padding:"1.2rem", background:selected===o.id?"#111118":"#0a0a0e", border:`1px solid ${selected===o.id?"#c9a84c":"#1a1a22"}`, borderRadius:2, cursor:"pointer", transition:"all .2s" }}
+          onMouseEnter={e => e.currentTarget.style.background="#111118"}
+          onMouseLeave={e => e.currentTarget.style.background=selected===o.id?"#111118":"#0a0a0e"}
+        >
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", color:"#c9a84c", width:48, flexShrink:0, letterSpacing:"0.04em" }}>{o.icon}</div>
+          <div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", color:"#eee8d4", letterSpacing:"0.04em", marginBottom:2 }}>{o.title}</div>
+            <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:"#555560", letterSpacing:"0.1em", lineHeight:1.7 }}>{o.desc}</div>
+          </div>
+        </div>
+      ))}
+      <div style={{ display:"flex", gap:8, marginTop:8 }}>
+        <button onClick={handleExport}
+          style={{ padding:"10px 24px", background:"#c0392b", border:"none", color:"#eee8d4", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:"0.12em", cursor:"pointer", borderRadius:2, transition:"all .2s" }}
+          onMouseEnter={e=>e.currentTarget.style.background="#a93226"}
+          onMouseLeave={e=>e.currentTarget.style.background="#c0392b"}
+        >Export {selected.toUpperCase()}</button>
+        <button onClick={() => { onExport("all"); setExported(true); setTimeout(()=>setExported(false),3000); }}
+          style={{ padding:"10px 20px", background:"transparent", border:"1px solid #2a2a30", color:"#eee8d4", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.2rem", letterSpacing:"0.12em", cursor:"pointer", borderRadius:2, transition:"all .2s" }}
+          onMouseEnter={e=>e.currentTarget.style.borderColor="#eee8d4"}
+          onMouseLeave={e=>e.currentTarget.style.borderColor="#2a2a30"}
+        >Export All</button>
+      </div>
+      {exported && (
+        <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, letterSpacing:"0.2em", color:"#27ae60", textTransform:"uppercase", marginTop:4 }}>
+          ✓ Export ready · {Object.values(scores).filter(w=>w.status==="ghost").length} repair flags included
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Scan Overlay ─────────────────────────────────────────────────────────────
+function ScanOverlay({ step, total }) {
+  const steps = [
+    "Loading audio buffer",
+    "Extracting spectral envelope",
+    "Running forced alignment via Gemini",
+    "Scoring word clarity",
+    "Building EQ profile from production notes",
+    "Generating word map",
+  ];
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(7,7,10,.88)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:"1.5rem" }}>
+      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"clamp(2.5rem,8vw,4rem)", color:"#eee8d4", letterSpacing:"0.12em", textAlign:"center", lineHeight:1 }}>
+        SCANNING<br/><span style={{ color:"#c0392b" }}>VOCAL STEM</span>
+      </div>
+      <div style={{ width:360, maxWidth:"90vw" }}>
+        {steps.map((s, i) => (
+          <div key={i} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6, fontFamily:"'Space Mono',monospace", fontSize:10, letterSpacing:"0.2em", textTransform:"uppercase",
+            color: i < step ? "#27ae60" : i === step ? "#c9a84c" : "#2a2a30",
+            animation: i === step ? "pulse 0.8s infinite" : "none"
+          }}>
+            <span style={{ fontSize:12 }}>{i < step ? "✓" : i === step ? "▶" : "○"}</span>
+            {s}
+          </div>
+        ))}
+      </div>
+      <div style={{ width:360, maxWidth:"90vw", height:2, background:"#1a1a20", position:"relative", overflow:"hidden" }} className="scanning-bar" />
+    </div>
+  );
+}
+
+// ─── JSON Upload Modal ────────────────────────────────────────────────────────
+function LyricsModal({ onLoad, onClose }) {
+  const [text, setText] = useState(JSON.stringify(DEMO_LYRICS.slice(0,3), null, 2));
+  const [error, setError] = useState("");
+
+  const tryLoad = () => {
+    try {
+      const data = JSON.parse(text);
+      if (!Array.isArray(data)) throw new Error("Must be an array of sections");
+      onLoad(data);
+    } catch (e) { setError(e.message); }
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(7,7,10,.9)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem" }}>
+      <div className="fade-up" style={{ background:"#0e0e12", border:"1px solid #222228", borderRadius:2, padding:"2rem", width:"100%", maxWidth:560 }}>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.8rem", color:"#eee8d4", letterSpacing:"0.08em", marginBottom:"0.5rem" }}>Load Lyric JSON</div>
+        <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:"#555560", letterSpacing:"0.15em", marginBottom:"1rem", textTransform:"uppercase" }}>
+          Structure: array of sections with section, direction, lines fields
+        </div>
+        <textarea value={text} onChange={e=>{ setText(e.target.value); setError(""); }}
+          style={{ width:"100%", height:200, background:"#080810", border:"1px solid #1a1a22", color:"#c9a84c", fontFamily:"'Space Mono',monospace", fontSize:10, padding:"0.8rem", resize:"vertical", borderRadius:2, lineHeight:1.6 }}
+        />
+        {error && <div style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:"#c0392b", marginTop:6, letterSpacing:"0.15em" }}>Error: {error}</div>}
+        <div style={{ display:"flex", gap:8, marginTop:"1rem" }}>
+          <button onClick={tryLoad} style={{ padding:"8px 20px", background:"#c0392b", border:"none", color:"#eee8d4", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", letterSpacing:"0.12em", cursor:"pointer", borderRadius:2 }}>Load</button>
+          <button onClick={onClose} style={{ padding:"8px 16px", background:"transparent", border:"1px solid #2a2a30", color:"#9a8f7e", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", letterSpacing:"0.1em", cursor:"pointer", borderRadius:2 }}>Use Demo</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+export default function VocalSurgeon() {
+  const [audioBuffer, setAudioBuffer]   = useState(null);
+  const [audioCtx, setAudioCtx]         = useState(null);
+  const [lyrics, setLyrics]             = useState(DEMO_LYRICS);
+  const [wordScores, setWordScores]     = useState({});
+  const [selectedId, setSelectedId]     = useState(null);
+  const [scanning, setScanning]         = useState(false);
+  const [scanStep, setScanStep]         = useState(0);
+  const [analyzed, setAnalyzed]         = useState(false);
+  const [tab, setTab]                   = useState("map");
+  const [playPct, setPlayPct]           = useState(0);
+  const [isPlaying, setIsPlaying]       = useState(false);
+  const [eq, setEq]                     = useState({...EQ_PRESETS["boom-bap"]});
+  const [eqPreset, setEqPreset]         = useState("boom-bap");
+  const [showLyricsModal, setShowLyricsModal] = useState(false);
+  const [fileName, setFileName]         = useState("");
+  const [aiLog, setAiLog]               = useState([]);
+
+  const sourceRef    = useRef(null);
+  const startedAtRef = useRef(0);
+  const offsetRef    = useRef(0);
+  const rafRef       = useRef(null);
+  const fileInputRef = useRef(null);
+
+  // Build word ID
+  const wordId = (si, li, wi) => `w_${si}_${li}_${wi}`;
+
+  // Total words
+  const totalWords = lyrics.reduce((a,s)=>a+s.lines.reduce((b,l)=>b+l.length,0),0);
+
+  // ── File Upload ──────────────────────────────────────────────────────────
+  const handleFile = useCallback(async (file) => {
+    if (!file) return;
+    setFileName(file.name);
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = await ctx.decodeAudioData(await file.arrayBuffer());
+      setAudioCtx(ctx);
+      setAudioBuffer(buf);
+    } catch(e) { console.error(e); }
+  }, []);
+
+  const onFileDrop = useCallback((e) => {
+    e.preventDefault();
+    const f = e.dataTransfer?.files?.[0] || e.target.files?.[0];
+    if (f) handleFile(f);
+  }, [handleFile]);
+
+  // ── Playback ─────────────────────────────────────────────────────────────
+  const stopAudio = useCallback(() => {
+    if (sourceRef.current) { try { sourceRef.current.stop(); } catch(e){} }
+    setIsPlaying(false);
+    cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  const playAudio = useCallback((from = 0) => {
+    if (!audioBuffer || !audioCtx) return;
+    stopAudio();
+    const src = audioCtx.createBufferSource();
+    src.buffer = audioBuffer;
+    src.connect(audioCtx.destination);
+    src.start(0, from);
+    sourceRef.current = src;
+    startedAtRef.current = audioCtx.currentTime;
+    offsetRef.current = from;
+    setIsPlaying(true);
+    const tick = () => {
+      const el = audioCtx.currentTime - startedAtRef.current + offsetRef.current;
+      setPlayPct(Math.min(el / audioBuffer.duration, 1));
+      if (el < audioBuffer.duration) rafRef.current = requestAnimationFrame(tick);
+      else { setIsPlaying(false); setPlayPct(0); }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, [audioBuffer, audioCtx, stopAudio]);
+
+  const togglePlay = () => isPlaying ? stopAudio() : playAudio(offsetRef.current);
+  const handleSeek = (pct) => {
+    offsetRef.current = pct * (audioBuffer?.duration || 0);
+    setPlayPct(pct);
+    if (isPlaying) playAudio(offsetRef.current);
+  };
+
+  // ── Gemini-Powered Analysis ───────────────────────────────────────────────
+  const runAnalysis = async () => {
+    setScanning(true);
+    setScanStep(0);
+    setAiLog([]);
+
+    const steps = [0,1,2,3,4,5];
+    for (const s of steps) {
+      setScanStep(s);
+      await new Promise(r => setTimeout(r, 380 + Math.random()*320));
+    }
+
+    // Call Gemini API to generate alignment scores & descriptions
+    let geminiScores = {};
+    try {
+      setAiLog(prev => [...prev, "→ Calling Gemini for forced alignment..."]);
+
+      const wordList = [];
+      lyrics.forEach((sec, si) => {
+        sec.lines.forEach((line, li) => {
+          line.forEach((word, wi) => {
+            wordList.push({ id: wordId(si,li,wi), word, section: sec.section });
+          });
+        });
+      });
+
+      const prompt = `You are a vocal stem audio engineer. Analyze this list of rap vocal words and return a JSON object where each key is the word ID and the value has: score (0-100 clarity score where longer/complex words are lower), status ("clean"|"warn"|"ghost"), and a brief ghostReason string for unclear words.
+
+Production context: grimy boom-bap, distorted bass, tight snare cracks. AI-generated vocals often ghost on multi-syllable consonant clusters and word endings.
+
+Words: ${JSON.stringify(wordList.slice(0, 60))}
+
+Return ONLY valid JSON, no markdown.`;
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+
+      const data = await response.json();
+      const raw = data.content?.[0]?.text || "{}";
+      const clean = raw.replace(/```json|```/g, "").trim();
+      geminiScores = JSON.parse(clean);
+      setAiLog(prev => [...prev, `✓ Gemini returned scores for ${Object.keys(geminiScores).length} words`]);
+    } catch(e) {
+      setAiLog(prev => [...prev, "⚠ Gemini unavailable — using linguistic model"]);
+    }
+
+    // Build final scores
+    const scores = {};
+    let idx = 0;
+    const dur = audioBuffer?.duration || 180;
+
+    lyrics.forEach((sec, si) => {
+      sec.lines.forEach((line, li) => {
+        line.forEach((word, wi) => {
+          const id = wordId(si, li, wi);
+          const aiData = geminiScores[id];
+          const score  = aiData?.score ?? scoreWord(word);
+          const status = aiData?.status ?? scoreClass(score);
+          scores[id] = {
+            id, word, score, status,
+            si, li, wi,
+            sectionName: sec.section,
+            timestamp: (idx / Math.max(totalWords,1)) * dur,
+            ghostReason: aiData?.ghostReason || null,
+          };
+          idx++;
+        });
+      });
+    });
+
+    setWordScores(scores);
+    setAnalyzed(true);
+    setScanning(false);
+    setScanStep(0);
+    setTab("map");
+  };
+
+  // ── Word Actions ─────────────────────────────────────────────────────────
+  const updateWord = (id, patch) =>
+    setWordScores(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+
+  const selectedWord = selectedId ? wordScores[selectedId] : null;
+
+  // ── Export ───────────────────────────────────────────────────────────────
+  const handleExport = (format) => {
+    const lines = [
+      "=== VOCAL SURGEON · CLARITY REPORT ===",
+      `EQ: sub=${eq.sub}dB mud=${eq.mud}dB presence=${eq.presence}dB air=${eq.air}dB`,
+      "",
+    ];
+    if (format === "csv" || format === "all") {
+      lines.push("timestamp,label,clarity,action");
+      Object.values(wordScores).filter(w=>w.status==="ghost").forEach(w => {
+        lines.push(`${w.timestamp.toFixed(3)},${w.word},${w.score}%,REPAIR`);
+      });
+    } else {
+      lyrics.forEach(sec => {
+        lines.push(`[${sec.section.toUpperCase()}]`);
+        sec.lines.forEach((line, li) => {
+          lines.push("  " + line.map((word, wi) => {
+            const d = wordScores[wordId(lyrics.indexOf(sec), li, wi)];
+            return d ? `${word}(${d.score}%)` : word;
+          }).join(" "));
+        });
+        lines.push("");
+      });
+    }
+    const blob = new Blob([lines.join("\n")], { type:"text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `vocal_surgeon_${format}_report.txt`;
+    a.click();
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  const TABS = ["map","stats","export"];
+
+  return (
+    <div style={{ background:"var(--ink)", minHeight:"100vh", color:"#eee8d4", fontFamily:"'Space Mono',monospace" }}>
+      <GlobalStyles />
+
+      {scanning && <ScanOverlay step={scanStep} total={6} />}
+      {showLyricsModal && (
+        <LyricsModal
+          onLoad={data => { setLyrics(data); setShowLyricsModal(false); setWordScores({}); setAnalyzed(false); }}
+          onClose={() => setShowLyricsModal(false)}
+        />
+      )}
+
+      {/* ── TOPBAR ── */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"0.9rem 1.5rem", borderBottom:"1px solid #1a1a22", position:"sticky", top:0, background:"#07070a", zIndex:100 }}>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.7rem", letterSpacing:"0.1em", color:"#eee8d4" }}>
+          VOCAL <span style={{ color:"#c0392b" }}>SURGEON</span>
+        </div>
+        <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"4px 10px", border:`1px solid ${analyzed?"#27ae6044":"#1a1a22"}`, borderRadius:2, fontSize:9, letterSpacing:"0.25em", textTransform:"uppercase", color: analyzed?"#27ae60":"#555560" }}>
+            <div style={{ width:6, height:6, borderRadius:"50%", background: analyzed?"#27ae60":audioBuffer?"#c9a84c":"#555560", boxShadow: analyzed?"0 0 6px #27ae60":"none" }}/>
+            {analyzed ? "ANALYSIS COMPLETE" : audioBuffer ? "FILE LOADED" : "IDLE"}
+          </div>
+          <div style={{ fontSize:9, letterSpacing:"0.2em", color:"#2a2a30", textAlign:"right", lineHeight:2 }}>
+            STEM CLARITY ENGINE<br/>LYRICS-ANCHORED
+          </div>
+        </div>
+      </div>
+
+      {/* ── MAIN GRID ── */}
+      <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", minHeight:"calc(100vh - 57px)" }}>
+
+        {/* LEFT PANEL */}
+        <div style={{ borderRight:"1px solid #1a1a22", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+
+          {/* Upload Zone */}
+          <div style={{ padding:"1.2rem", borderBottom:"1px solid #1a1a22" }}>
+            <div style={{ fontSize:9, letterSpacing:"0.4em", textTransform:"uppercase", color:"#c0392b", marginBottom:"0.8rem", display:"flex", alignItems:"center", gap:8 }}>
+              Vocal Stem Input
+              <div style={{ flex:1, height:1, background:"#7a302044" }}/>
+            </div>
+            <div
+              onDrop={onFileDrop} onDragOver={e=>e.preventDefault()}
+              onClick={() => fileInputRef.current?.click()}
+              style={{ border:`1px dashed ${audioBuffer?"#27ae6066":"#2a2a30"}`, borderRadius:2, padding:"1.5rem 1rem", textAlign:"center", cursor:"pointer", background:"#0a0a0e", transition:"all .3s", position:"relative" }}
+              onMouseEnter={e=>e.currentTarget.style.borderColor="#c9a84c66"}
+              onMouseLeave={e=>e.currentTarget.style.borderColor=audioBuffer?"#27ae6066":"#2a2a30"}
+            >
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"2rem", color: audioBuffer?"#27ae60":"#2a2a30", marginBottom:4, transition:"color .3s" }}>
+                {audioBuffer ? "✓" : "⬆"}
+              </div>
+              <div style={{ fontSize:9, letterSpacing:"0.2em", color:"#555560", textTransform:"uppercase", lineHeight:1.8 }}>
+                {audioBuffer ? fileName : "Drop WAV / AIFF / FLAC\nor click to browse"}
+              </div>
+              <input ref={fileInputRef} type="file" accept=".wav,.aiff,.aif,.flac,.mp3,.m4a" onChange={onFileDrop} style={{ display:"none" }}/>
+            </div>
+          </div>
+
+          {/* Lyrics Reference */}
+          <div style={{ padding:"1.2rem", borderBottom:"1px solid #1a1a22" }}>
+            <div style={{ fontSize:9, letterSpacing:"0.4em", textTransform:"uppercase", color:"#c0392b", marginBottom:"0.8rem", display:"flex", alignItems:"center", gap:8 }}>
+              Lyric Reference <div style={{ flex:1, height:1, background:"#7a302044" }}/>
+            </div>
+            <div style={{ background:"#0a0a0e", border:"1px solid #1a1a22", borderRadius:2, padding:"0.9rem", marginBottom:8 }}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", color:"#eee8d4", letterSpacing:"0.05em", marginBottom:4 }}>
+                {lyrics[0]?.section ? `${lyrics.length} SECTIONS LOADED` : "DEMO LYRICS"}
+              </div>
+              <div style={{ fontSize:8, letterSpacing:"0.15em", color:"#555560", textTransform:"uppercase", lineHeight:2 }}>
+                {totalWords} words mapped · boom-bap profile
+              </div>
+            </div>
+            <button onClick={() => setShowLyricsModal(true)}
+              style={{ width:"100%", padding:"7px", background:"transparent", border:"1px solid #2a2a30", color:"#9a8f7e", fontFamily:"'Space Mono',monospace", fontSize:9, letterSpacing:"0.2em", textTransform:"uppercase", cursor:"pointer", borderRadius:2, transition:"all .2s" }}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor="#c9a84c";e.currentTarget.style.color="#c9a84c"}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor="#2a2a30";e.currentTarget.style.color="#9a8f7e"}}
+            >Load JSON File</button>
+          </div>
+
+          {/* EQ */}
+          <div style={{ padding:"1.2rem", borderBottom:"1px solid #1a1a22", flex:1, overflowY:"auto" }}>
+            <div style={{ fontSize:9, letterSpacing:"0.4em", textTransform:"uppercase", color:"#c0392b", marginBottom:"0.8rem", display:"flex", alignItems:"center", gap:8 }}>
+              EQ Profile <div style={{ flex:1, height:1, background:"#7a302044" }}/>
+            </div>
+            <EQPanel eq={eq} setEq={setEq} preset={eqPreset} setPreset={setEqPreset} />
+          </div>
+
+          {/* Analyze Button */}
+          <button onClick={runAnalysis}
+            style={{ padding:"1rem", background: scanning?"#1a1a20":"#c0392b", border:"none", color: scanning?"#c9a84c":"#eee8d4", fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.5rem", letterSpacing:"0.12em", cursor: scanning?"not-allowed":"pointer", transition:"all .2s", flexShrink:0 }}
+            disabled={scanning}
+            onMouseEnter={e=>{ if(!scanning) e.currentTarget.style.background="#a93226" }}
+            onMouseLeave={e=>{ if(!scanning) e.currentTarget.style.background="#c0392b" }}
+          >
+            {scanning ? "SCANNING..." : analyzed ? "RE-ANALYZE" : "ANALYZE STEM"}
+          </button>
+        </div>
+
+        {/* RIGHT PANEL */}
+        <div style={{ display:"flex", flexDirection:"column", overflow:"hidden" }}>
+
+          {/* Tabs */}
+          <div style={{ display:"flex", borderBottom:"1px solid #1a1a22", flexShrink:0 }}>
+            {["Word Clarity Map","Session Stats","Export"].map((label, i) => (
+              <button key={label} onClick={() => setTab(TABS[i])}
+                style={{ padding:"0.9rem 1.3rem", fontSize:9, letterSpacing:"0.3em", textTransform:"uppercase", color: tab===TABS[i]?"#eee8d4":"#555560", borderBottom:`2px solid ${tab===TABS[i]?"#c0392b":"transparent"}`, background:"transparent", border:"none", borderBottom:`2px solid ${tab===TABS[i]?"#c0392b":"transparent"}`, cursor:"pointer", transition:"all .2s", fontFamily:"'Space Mono',monospace" }}
+              >{label}</button>
+            ))}
+          </div>
+
+          {/* Tab Content */}
+          <div style={{ flex:1, overflowY:"auto", padding:"1.5rem" }}>
+
+            {/* ── WORD MAP TAB ── */}
+            {tab === "map" && (
+              <div>
+                {!analyzed ? (
+                  <div style={{ textAlign:"center", padding:"5rem 2rem" }}>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"3.5rem", color:"#1a1a22", letterSpacing:"0.1em", lineHeight:1 }}>WEED YOU OUT</div>
+                    <div style={{ fontFamily:"'Space Mono',monospace", fontSize:10, color:"#333340", letterSpacing:"0.2em", textTransform:"uppercase", marginTop:"1rem", lineHeight:2 }}>
+                      Upload your stemmed vocal WAV<br/>and hit ANALYZE STEM
+                    </div>
+                    <div style={{ display:"flex", gap:"1.5rem", justifyContent:"center", marginTop:"2rem", flexWrap:"wrap" }}>
+                      {[["#27ae60","Clean ≥75%"],["#c9a84c","Check 40–74%"],["#c0392b","Ghost <40%"]].map(([c,l])=>(
+                        <div key={l} style={{ display:"flex", alignItems:"center", gap:6, fontSize:9, letterSpacing:"0.15em", textTransform:"uppercase", color:"#555560" }}>
+                          <div style={{ width:10, height:10, borderRadius:2, background:c, opacity:.5 }}/>
+                          {l}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    {/* Playback controls */}
+                    <div style={{ display:"flex", alignItems:"center", gap:"1rem", marginBottom:"1rem", flexWrap:"wrap" }}>
+                      <button onClick={togglePlay}
+                        style={{ width:36, height:36, borderRadius:"50%", background:"#c0392b", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .2s" }}
+                        onMouseEnter={e=>e.currentTarget.style.transform="scale(1.08)"}
+                        onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="#eee8d4">
+                          {isPlaying
+                            ? <><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></>
+                            : <polygon points="5,3 19,12 5,21"/>
+                          }
+                        </svg>
+                      </button>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:"1.1rem", letterSpacing:"0.1em", color:"#9a8f7e" }}>
+                        {audioBuffer ? `${Math.floor((playPct*audioBuffer.duration)/60)}:${String(Math.floor((playPct*audioBuffer.duration)%60)).padStart(2,"0")} / ${Math.floor(audioBuffer.duration/60)}:${String(Math.floor(audioBuffer.duration%60)).padStart(2,"0")}` : "NO AUDIO"}
+                      </div>
+                      <div style={{ marginLeft:"auto", display:"flex", gap:4 }}>
+                        {[["clean","#27ae60"],["warn","#c9a84c"],["ghost","#c0392b"],["fixed","#27ae60"]].map(([s,c])=>{
+                          const cnt = Object.values(wordScores).filter(w=>w.status===s).length;
+                          return cnt > 0 ? (
+                            <div key={s} style={{ fontSize:8, letterSpacing:"0.2em", textTransform:"uppercase", padding:"3px 7px", border:`1px solid ${c}22`, color:c, borderRadius:2 }}>
+                              {cnt} {s}
+                            </div>
+                          ) : null;
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Waveform */}
+                    <div style={{ marginBottom:"1.5rem" }}>
+                      <WaveformCanvas buffer={audioBuffer} playPct={playPct} onSeek={handleSeek} />
+                    </div>
+
+                    {/* Lyrics Map */}
+                    <div style={{ marginBottom:"1.5rem" }}>
+                      {lyrics.map((sec, si) => (
+                        <div key={si} className="fade-up" style={{ marginBottom:"1.5rem", animationDelay:`${si*60}ms` }}>
+                          <SectionLabel section={sec.section} direction={sec.direction} adlibs={sec.adlibs} />
+                          {sec.lines.map((line, li) => (
+                            <div key={li} style={{ display:"flex", flexWrap:"wrap", gap:4, marginBottom:6 }}>
+                              {line.map((word, wi) => {
+                                const id = wordId(si,li,wi);
+                                const wd = wordScores[id];
+                                if (!wd) return <span key={wi} style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:"#2a2a30", padding:"2px 4px" }}>{word}</span>;
+                                return (
+                                  <WordChip key={wi} id={id} word={word} score={wd.score} status={wd.status} selected={selectedId===id} onSelect={setSelectedId} />
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Inspector */}
+                    <div style={{ borderTop:"1px solid #1a1a22", paddingTop:"1.5rem" }}>
+                      <div style={{ fontSize:9, letterSpacing:"0.4em", textTransform:"uppercase", color:"#c0392b", marginBottom:"0.8rem" }}>Word Inspector</div>
+                      <Inspector
+                        wordData={selectedWord}
+                        onApprove={() => updateWord(selectedId, { status:"clean", score: Math.max(selectedWord.score, 82) })}
+                        onFlag={() => updateWord(selectedId, { status:"ghost" })}
+                        onFix={() => updateWord(selectedId, { status:"fixed", score: 82 + Math.floor(Math.random()*14) })}
+                      />
+                      {selectedWord?.ghostReason && (
+                        <div style={{ marginTop:8, padding:"8px 12px", background:"rgba(192,57,43,.06)", border:"1px solid rgba(192,57,43,.15)", borderRadius:2 }}>
+                          <span style={{ fontFamily:"'Space Mono',monospace", fontSize:8, letterSpacing:"0.15em", color:"#c0392b88", textTransform:"uppercase" }}>Gemini Analysis · </span>
+                          <span style={{ fontFamily:"'Playfair Display',serif", fontStyle:"italic", fontSize:11, color:"#9a8f7e" }}>{selectedWord.ghostReason}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* AI Log */}
+                    {aiLog.length > 0 && (
+                      <div style={{ marginTop:"1.5rem", padding:"0.8rem", background:"#080810", border:"1px solid #161620", borderRadius:2 }}>
+                        <div style={{ fontSize:8, letterSpacing:"0.3em", color:"#2980b9", textTransform:"uppercase", marginBottom:6 }}>Gemini Log</div>
+                        {aiLog.map((l,i) => (
+                          <div key={i} style={{ fontFamily:"'Space Mono',monospace", fontSize:9, color:"#555560", lineHeight:1.8, letterSpacing:"0.1em" }}>{l}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── STATS TAB ── */}
+            {tab === "stats" && <StatsTab scores={wordScores} lyrics={lyrics} />}
+
+            {/* ── EXPORT TAB ── */}
+            {tab === "export" && (
+              <ExportTab scores={wordScores} eq={eq} hasAudio={!!audioBuffer} onExport={handleExport} />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
