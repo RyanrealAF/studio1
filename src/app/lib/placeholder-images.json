@@ -1,0 +1,23 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "vocal-wave",
+      "description": "Abstract audio waveform",
+      "imageUrl": "https://picsum.photos/seed/vocal1/1200/800",
+      "imageHint": "audio waveform"
+    },
+    {
+      "id": "studio-gear",
+      "description": "Professional recording studio equipment",
+      "imageUrl": "https://picsum.photos/seed/studio2/800/600",
+      "imageHint": "recording studio"
+    },
+    {
+      "id": "surgical-precision",
+      "description": "Detailed technical measurement instruments",
+      "imageUrl": "https://picsum.photos/seed/tech3/800/600",
+      "imageHint": "technical precision"
+    }
+  ]
+}
