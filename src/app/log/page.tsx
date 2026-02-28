@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Activity, ShieldAlert, CheckCircle2, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function SpectralLog() {
   const events = [
@@ -47,5 +48,3 @@ export default function SpectralLog() {
     </div>
   );
 }
-
-import { cn } from "@/lib/utils";
