@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
@@ -19,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useUser, useFirestore } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
-import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 interface WordData {
   id: string;

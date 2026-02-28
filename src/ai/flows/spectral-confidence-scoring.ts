@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A Genkit flow for analyzing the spectral confidence of articulated words in vocal audio.
@@ -82,14 +81,14 @@ For each word, evaluate its clarity, articulation, and overall presence in the a
 Based on this confidence score, determine if the word 'needs repair'. A word needs repair if its clarity, articulation, or presence is significantly compromised. Typically, a score below 60 might indicate a need for repair.
 
 Here are the full lyrics:
-\`\`\`
+\x60\x60\x60
 {{{lyrics}}}
-\`\`\`
+\x60\x60\x60
 
 Here are the word-level timestamps for your analysis:
-\`\`\`json
+\x60\x60\x60json
 {{{json wordTimestamps}}}
-\`\`\`
+\x60\x60\x60
 
 Analyze the audio provided. Focus your analysis on the specific audio segments for each word as indicated by the 'startTime' and 'endTime' in the wordTimestamps.
 
